@@ -60,24 +60,24 @@ class Affiliate:
         self.target_stock = {p: [inputs["target_stock"][self.name]] * inputs["horizon"] for p in self.products}
         self.projected_stock = {p: [None for _ in range(inputs["horizon"])]  for p in self.products}
         self.supply_demand = {p: [None for _ in range(inputs["horizon"])] for p in self.products}
-        self.work_in_progress = {p: inputs["prev_supply_plan"][self.name][p][:self.delivery_time] +\
+        self.imminent_supply = {p: inputs["prev_supply_plan"][self.name][p][:self.delivery_time] +\
                                  [0 for _ in range(inputs["horizon"]-self.delivery_time)] for p in self.products}
         
     def run(self):
         for p in self.products:
             for t in range(inputs["horizon"]):
                 if t == 0:
-                    curr_stock_proj = self.initial_stock[p]
+                    prev_stock_proj = self.initial_stock[p]
                 else:
-                    curr_stock_proj = self.projected_stock[p][t-1]
-                self.supply_demand[p][t] = max(0, self.sales_forcast[p][t] + self.target_stock[p][t] - self.work_in_progress[p][t] - curr_stock_proj)
-                self.projected_stock[p][t] = curr_stock_proj + self.work_in_progress[p][t] + self.supply_demand[p][t] - self.sales_forcast[p][t]
+                    prev_stock_proj = self.projected_stock[p][t-1]
+                self.supply_demand[p][t] = max(0, self.sales_forcast[p][t] + self.target_stock[p][t] - self.imminent_supply[p][t] - prev_stock_proj)
+                self.projected_stock[p][t] = prev_stock_proj + self.imminent_supply[p][t] + self.supply_demand[p][t] - self.sales_forcast[p][t]
 
 class CBN_CDC:
     def __init__(self, affiliates_obj: list[Affiliate]) -> None:
         self.affiliates = affiliates_obj
         self.initial_stock = inputs["initial_stocks"]["cdc"]
-        self.stock_projection = {p: [None for _ in range(inputs["horizon"])] for p in inputs["products"]}
+        self.projected_stock = {p: [None for _ in range(inputs["horizon"])] for p in inputs["products"]}
         self.target_stock = {p: [30000 for _ in range(inputs["horizon"])] for p in inputs["products"]}
         self.prod_demand = {p: [None for _ in range(inputs["horizon"])] for p in inputs["products"]}
         self.queued_prod = {p: inputs["prev_prod_plan"][p][:2] + [0 for _ in range(inputs["horizon"]-2)] for p in inputs["products"]}
@@ -90,9 +90,9 @@ class CBN_CDC:
                                 for p in inputs["products"]}
         for p, pdp in self.pdps.items():
             for t in range(inputs["horizon"]):
-                curr_proj_stock = self.initial_stock[p] if t == 0 else self.stock_projection[p][t-1]
-                self.prod_demand[p][t] = max(pdp[t], self.supply_demand[p][t] + self.target_stock[p][t] - curr_proj_stock - self.queued_prod[p][t])
-                self.stock_projection[p][t] = curr_proj_stock + self.prod_demand[p][t] + self.queued_prod[p][t] - self.supply_demand[p][t]                                     
+                prev_proj_stock = self.initial_stock[p] if t == 0 else self.projected_stock[p][t-1]
+                self.prod_demand[p][t] = max(pdp[t], self.supply_demand[p][t] + self.target_stock[p][t] - prev_proj_stock - self.queued_prod[p][t])
+                self.projected_stock[p][t] = prev_proj_stock + self.prod_demand[p][t] + self.queued_prod[p][t] - self.supply_demand[p][t]                                     
      
 class Factory:
     def __init__(self, cbn_cdc: CBN_CDC) -> None:
@@ -101,26 +101,28 @@ class Factory:
         self.packaging_capacity = inputs["factory_capacity"]
         self.prod_plan = {p: [0 for _ in range(inputs["horizon"]) ] for p in inputs["products"]}
         self.unavailability = {p: [0 for _ in range(inputs["horizon"])] for p in inputs["products"]}
-        self.prod_time = 2
+        self.prod_time = inputs["prod_time"]
+        self.prev_prod_plan = {p: inputs["prev_prod_plan"][p][self.prod_time:] + [0] * self.prod_time for p in inputs["products"]}
         
     def run(self):
-        self.total_net_demand = [sum([self.cbn_cdc.prod_demand[p][t + self.prod_time] if t + self.prod_time < inputs["horizon"] else 0 for p in inputs["products"]]) for t in range(inputs["horizon"])]
+        self.prod_demand = {p: self.cbn_cdc.prod_demand[p][self.prod_time:] + [0] * self.prod_time for p in inputs["products"]}
+        self.total_net_demand = [sum([self.prod_demand[p][t] for p in inputs["products"]]) for t in range(inputs["horizon"])]
         for p in inputs["products"]:
-            self.prod_plan[p][0] = inputs["prev_prod_plan"][p][0 + self.prod_time]
-            self.prod_plan[p][1] = inputs["prev_prod_plan"][p][1 + self.prod_time]
-            self.unavailability[p][0] = self.cbn_cdc.prod_demand[p][0 + self.prod_time] -  self.prod_plan[p][0]
-            self.unavailability[p][1] = self.unavailability[p][0] + self.cbn_cdc.prod_demand[p][1 + self.prod_time] -  self.prod_plan[p][1]
+            self.prod_plan[p][0] = self.prev_prod_plan[p][0]
+            self.prod_plan[p][1] = self.prev_prod_plan[p][1]
+            self.unavailability[p][0] = self.prod_demand[p][0] - self.prod_plan[p][0]
+            self.unavailability[p][1] = self.unavailability[p][0] + self.prod_demand[p][1] - self.prod_plan[p][1]
 
-            for t in range(2, inputs["horizon"] - self.prod_time):
-                raw_need = self.cbn_cdc.prod_demand[p][t + self.prod_time] + self.unavailability[p][t-1]
+            for t in range(2, inputs["horizon"]):
+                raw_need = self.prod_demand[p][t] + self.unavailability[p][t-1]
                 if self.total_net_demand[t] > self.packaging_capacity[t]:
-                    demand_ratio = self.cbn_cdc.prod_demand[p][t] / self.total_net_demand[t]
+                    demand_ratio = self.prod_demand[p][t] / self.total_net_demand[t]
                     quantity_to_produce = demand_ratio * self.packaging_capacity[t]
-                    self.prod_plan[p][t] = min(quantity_to_produce, max(raw_need, inputs["prev_prod_plan"][p][t + self.prod_time]))
+                    self.prod_plan[p][t] = min(quantity_to_produce, max(raw_need, self.prev_prod_plan[p][t]))
                 else:
-                    self.prod_plan[p][t] = max(raw_need, inputs["prev_prod_plan"][p][t + self.prod_time])
+                    self.prod_plan[p][t] = max(raw_need, self.prev_prod_plan[p][t])
                 self.prod_plan[p][t] = math.floor(self.prod_plan[p][t])
-                self.unavailability[p][t] = self.unavailability[p][t-1] + self.cbn_cdc.prod_demand[p][t + self.prod_time] -  self.prod_plan[p][t]
+                self.unavailability[p][t] = self.unavailability[p][t-1] + self.prod_demand[p][t] - self.prod_plan[p][t]
 
     def getNextProdPlan(self):
         prod_plan = {}
@@ -203,7 +205,7 @@ class PA_CDC:
         ans = {}
         for a, aff in self.affiliates.items():
             ans[a] = {
-                p: aff.initial_stock[p] + aff.work_in_progress[p][0] + (self.supply_plan[a][p][0] if aff.delivery_time==0 else 0) - aff.sales_forcast[p][0] 
+                p: aff.initial_stock[p] + aff.imminent_supply[p][0] + (self.supply_plan[a][p][0] if aff.delivery_time==0 else 0) - aff.sales_forcast[p][0] 
                 for p in aff.products
             } 
         ans["cdc"] = {p: self.projected_stock[p][0] for p in inputs["products"]}

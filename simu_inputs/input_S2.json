@@ -1,5 +1,6 @@
 {
     "horizon": 24,
+    "prod_time": 2,
     "week": 2,
     "delivery_time": {
         "france": 0,

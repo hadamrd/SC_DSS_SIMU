@@ -25,10 +25,11 @@ def writeToExcel():
     prod_demand = []
     
     for file_name in os.listdir("simu_inputs"):
-        with open(f"simu_inputs/{file_name}") as fp:
-            input_data = json.load(fp)
-        product_sales.append(sumOverAffiliates(input_data["sales_forcast"], affiliates, products, horizon))
-        
+        if "input_S" in file_name:
+            with open(f"simu_inputs/{file_name}") as fp:
+                input_data = json.load(fp)
+            product_sales.append(sumOverAffiliates(input_data["sales_forcast"], affiliates, products, horizon))
+            
     for file_name in os.listdir("simu_outputs"):
         with open(f"simu_outputs/{file_name}") as fp:
             output_data = json.load(fp)

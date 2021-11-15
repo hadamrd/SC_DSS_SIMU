@@ -8,6 +8,7 @@ init_data = {
         "chili": 2,
         "australia": 3
     },
+    "prod_time": 2,
     "target_stock": {
         "france": 10000,
         "spain": 5000,
