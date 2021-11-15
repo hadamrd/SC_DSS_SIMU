@@ -2,21 +2,31 @@ import json
 import math
 import sales_forcast_generator
 import initial_data_generator
+import supply_plan_excel_loader
 
-
-def runModel(input_file):
+def runModel(input_file, load_supply_plan_from_excel=False):
     global inputs
     with open(input_file) as json_file:
         inputs = json.load(json_file)
     week = inputs["week"]
     output_file = f"simu_outputs/output_S{week}.json"
     next_input_file = f"simu_inputs/input_S{week+1}.json"
+    
     affiliates = [Affiliate(name) for name in inputs["affiliates"]]
     cbn_cdc = CBN_CDC(affiliates)
     factory = Factory(cbn_cdc)
     pa_cdc = PA_CDC(factory, cbn_cdc, affiliates)
+    
+    if load_supply_plan_from_excel:
+        pa_cdc.calculate_pa = False
+        supply_plan_excel_file = f"simu_inputs/supply_plan_S{week}"
+        platform_supply_plan = supply_plan_excel_loader.run(supply_plan_excel_file, inputs["horizon"])
+        inputs["prev_supply_plan"] = platform_supply_plan
+        pa_cdc.supply_plan = platform_supply_plan
+        
     for affiliate in affiliates:
         affiliate.run()
+        
     cbn_cdc.run()
     factory.run()
     pa_cdc.run()
@@ -131,6 +141,7 @@ class PA_CDC:
         self.initial_stock = self.cbn_cdc.initial_stock
         self.projected_stock = {p: [None for _ in range(inputs["horizon"])] for p in inputs["products"]}
         self.supply_plan = {a: {p: [0 for _ in range(inputs["horizon"])] for p in aff.products} for a, aff in self.affiliates.items()}
+        self.calculate_pa = True
         if inputs["week"] % 4 == 1:
             self.prod_plan = self.factory.prod_plan
         else:
@@ -148,8 +159,9 @@ class PA_CDC:
         for a in inputs["affiliates"]:
             affiliate =  self.affiliates[a]
             for p in affiliate.products:
-                self.supply_plan[a][p][0] = inputs["prev_supply_plan"][a][p][0 + affiliate.delivery_time]
-                self.supply_plan[a][p][1] = inputs["prev_supply_plan"][a][p][1 + affiliate.delivery_time]
+                if self.calculate_pa:
+                    self.supply_plan[a][p][0] = inputs["prev_supply_plan"][a][p][0 + affiliate.delivery_time]
+                    self.supply_plan[a][p][1] = inputs["prev_supply_plan"][a][p][1 + affiliate.delivery_time]
                 self.unavailability[a][p][0] = affiliate.supply_demand[p][0 + affiliate.delivery_time] - self.supply_plan[a][p][0]
         
         for p in inputs["products"]:
@@ -179,7 +191,7 @@ class PA_CDC:
                         aff_supply_demand = affiliate.supply_demand[p][t + affiliate.delivery_time]
                     else:
                         aff_supply_demand = 0
-                    if t >= 2:
+                    if self.calculate_pa and t >= 2:
                         if self.raw_need[p][t] > 0:
                             supply_ratio = (aff_supply_demand + self.unavailability[a][p][t-1]) / self.raw_need[p][t]
                             self.supply_plan[a][p][t] = max(round(supply_ratio * self.possible_to_promise[p][t]), 0)
