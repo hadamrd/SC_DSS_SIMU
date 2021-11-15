@@ -1,7 +1,5 @@
-from model import Model
-
 class CBN_CDC:
-    def __init__(self, model: Model) -> None:
+    def __init__(self, model) -> None:
         self.model = model
         self.initial_stock = model.initial_stocks["cdc"]
         self.projected_stock = {p: [None] * model.horizon for p in model.products}

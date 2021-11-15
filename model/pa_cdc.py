@@ -1,7 +1,5 @@
-from model import Model
-
 class PA_CDC:
-    def __init__(self, model: Model) -> None:
+    def __init__(self, model) -> None:
         self.model = model
         self.raw_need = {p: [None for _ in range(model.horizon)] for p in model.products}
         self.unavailability = {a: {p: [0] * model.horizon for p in model.products} for a in model.affiliates.keys()}
@@ -42,7 +40,7 @@ class PA_CDC:
                 total_unavailability = sum([self.unavailability[a][p][t-1] for a, aff in self.model.affiliates.items() if p in aff.products])
                 self.raw_need[p][t] = self.supply_demand[p][t] + total_unavailability
                 
-            for p in self.products:
+            for p in self.model.products:
                 planed_prod = self.prod_plan[p][t - prod_t] if t >= prod_t else 0
                 total_supply_plan = sum([self.supply_plan[a][p][t] for a, aff in self.model.affiliates.items() if p in aff.products])
                 self.projected_stock[p][t] = self.projected_stock[p][t-1] + planed_prod + self.model.cbn_cdc.queued_prod[p][t] - total_supply_plan

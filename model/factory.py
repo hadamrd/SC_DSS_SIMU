@@ -1,8 +1,6 @@
 import math
-from model import Model
-
 class Factory:
-    def __init__(self, model: Model) -> None:
+    def __init__(self, model) -> None:
         self.model = model
         self.packaging_load = [sum([model.prev_prod_plan[p][t] for p in model.products]) for t in range(model.horizon)] 
         self.packaging_capacity = model.factory_capacity

@@ -1,8 +1,7 @@
-from model import Model
-
 class Affiliate:
-    def __init__(self, name: str, model: Model) -> None:
+    def __init__(self, name: str, model) -> None:
         self.name = name
+        self.model = model
         self.products = model.sales_forcast[self.name].keys()
         self.delivery_time = model.delivery_time[self.name]
         self.initial_stock = {p: model.initial_stocks[self.name][p] for p in self.products}

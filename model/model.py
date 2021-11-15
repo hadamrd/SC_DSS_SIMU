@@ -1,11 +1,11 @@
 import json
-import sales_forcast_generator
-import model_data_generator
-import supply_plan_excel_loader
-from affiliate import Affiliate
-from pa_cdc import PA_CDC
-from factory import Factory
-from cbn_cdc import CBN_CDC
+from . import sales_forcast_generator
+from . import model_data_generator
+from . import supply_plan_excel_loader
+from .affiliate import Affiliate
+from .pa_cdc import PA_CDC
+from .factory import Factory
+from .cbn_cdc import CBN_CDC
 
 class Model:
     def __init__(self, input_file) -> None:
@@ -67,16 +67,13 @@ class Model:
     def generateSalesForcast(self):
         return sales_forcast_generator.run(self.sales_forcast, self.horizon)
     
-    def loadSupplyPlanFromExcel(self):
+    def loadPlatformSupplyPlan(self, file_path):
         self.pa_cdc.calculate_pa = False
-        supply_plan_excel_file = f"simu_inputs/supply_plan_S{self.week}"
-        platform_supply_plan = supply_plan_excel_loader.run(supply_plan_excel_file, self.horizon)
+        platform_supply_plan = supply_plan_excel_loader.run(file_path, self.horizon)
         self.prev_supply_plan = platform_supply_plan
         self.pa_cdc.supply_plan = platform_supply_plan
     
-    def generateNextInput(self, file_path):
-        if not file_path:
-            file_path = f"simu_inputs/input_S{self.week+1}.json"
+    def generateInput(self, file_path):
         model_data_generator.run(week=self.week+1,
                                 sales_forcast=self.generateSalesForcast(),
                                 prev_prod_plan=self.getProdPlan(),
@@ -85,12 +82,10 @@ class Model:
                                 file_name=file_path)
     
     def saveOutput(self, file_path):
-        if not file_path:
-            file_path = f"simu_outputs/output_S{self.week}.json"
         with open(file_path, 'w') as fp:
             json.dump(self.outputs, fp)
 
-    def generatePlatformInput(self):
+    def generatePlatformInput(self, file_path):
         pass
     
     def run(self):

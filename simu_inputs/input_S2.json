@@ -12,7 +12,8 @@
         "france": 10000,
         "spain": 5000,
         "chili": 10000,
-        "australia": 20000
+        "australia": 20000,
+        "cdc": 30000
     },
     "affiliates": [
         "france",
