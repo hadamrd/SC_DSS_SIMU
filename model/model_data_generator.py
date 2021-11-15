@@ -13,7 +13,8 @@ init_data = {
         "france": 10000,
         "spain": 5000,
         "chili": 10000,
-        "australia": 20000
+        "australia": 20000,
+        "cdc": 30000
     },
     "affiliates": ["france", "spain", "chili", "australia"],
     "products": ["P1", "P2", "P3", "P4"],
