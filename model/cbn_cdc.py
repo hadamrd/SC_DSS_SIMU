@@ -18,7 +18,7 @@ class CBN_CDC:
             p: aff.supply_demand[p][aff.delivery_time:] + [0] * aff.delivery_time for p in aff.products
         } for a, aff in self.model.affiliates.items()}
     
-    def getProductsSupplyDemand(self):
+    def getProductSupplyDemand(self):
         return {p: [sum([self.supply_demand[a.name][p][t] for a in self.model.affiliates.values() if p in a.products]) 
                                 for t in range(self.model.horizon)
                                 ] for p in self.model.products}
@@ -27,7 +27,7 @@ class CBN_CDC:
         self.queued_prod = self.getQueuedProd()
         self.prev_prod_plan = self.getPrevProdPlan()
         self.supply_demand = self.getSupplyDemand()
-        self.product_supply_demand = self.getProductsSupplyDemand()
+        self.product_supply_demand = self.getProductSupplyDemand()
         for p in self.model.products:
             for t in range(self.model.horizon):
                 prev_proj_stock = self.initial_stock[p] if t == 0 else self.projected_stock[p][t-1]

@@ -1,8 +1,5 @@
 import json
-import openpyxl
 from . import sales_forcast_generator
-from . import model_data_generator
-from . import supply_plan_excel_loader
 from .affiliate import Affiliate
 from .pa_cdc import PA_CDC
 from .factory import Factory
@@ -12,24 +9,28 @@ class Model:
     def __init__(self, input_file) -> None:
         with open(input_file) as json_file:
             inputs = json.load(json_file)
-            
-        self.week = inputs["week"]
+        self.affiliate_name = inputs["affiliates"]
+        self.affiliate_code = inputs["affiliate_code"]
         self.horizon = inputs["horizon"]
         self.products = inputs["products"]
         self.prod_time = inputs["prod_time"]
         self.delivery_time = inputs["delivery_time"]
         self.target_stock = inputs["target_stock"]
         self.factory_capacity = inputs["factory_capacity"]
+    
+    def loadWeekInput(self, input_file):
+        with open(input_file) as json_file:
+            inputs = json.load(json_file)
+        self.week = inputs["week"]
         self.initial_stock = inputs["initial_stock"]
         self.prev_prod_plan = inputs["prev_prod_plan"]
         self.sales_forcast = inputs["sales_forcast"]
         self.prev_supply_plan = inputs["prev_supply_plan"]
         
-        self.affiliates = {name: Affiliate(name, self) for name in inputs["affiliates"]}
+        self.affiliates = {name: Affiliate(name, self) for name in self.affiliate_name}
         self.cbn_cdc = CBN_CDC(self)
         self.factory = Factory(self)
         self.pa_cdc = PA_CDC(self)
-        self.outputs = None
     
     def getAffiliateSupplyDemand(self):
         return {name: a.supply_demand for name, a in self.affiliates.items()}
@@ -68,59 +69,22 @@ class Model:
     def getCDCProdDemand(self):
         return self.cbn_cdc.prod_demand
     
-    def generateSalesForcast(self):
+    def generateNextWeekSalesForcast(self):
         return sales_forcast_generator.run(self.sales_forcast, self.horizon)
     
-    def loadSupplyPlanFromExcel(self, file_path):
-        self.calculate_supply_plan = False
-        platform_supply_plan = supply_plan_excel_loader.run(file_path, self.horizon)
-        self.cdc_supply_plan = platform_supply_plan
-        with open(f"platform_outputs/platform_supply_plan_S{self.week}.json", 'w') as fp:
-            json.dump(platform_supply_plan, fp)
+    def setCDCSupplyPlan(self, supply_plan):
+        self.cdc_supply_plan = supply_plan
     
-    def generateNextInput(self, file_path):
-        model_data_generator.run(week=self.week+1,
-                                sales_forcast=self.generateSalesForcast(),
-                                prev_prod_plan=self.getNextProdPlan(),
-                                prev_supply_plan=self.getNextSupplyPlan(),
-                                initial_stock=self.getNextInitialStock(),
-                                file_name=file_path)
+    def generateNextWeekInput(self, file_path):
+        data = {}
+        data["prev_supply_plan"] = self.getNextSupplyPlan()
+        data["prev_prod_plan"] = self.getNextProdPlan()
+        data["sales_forcast"] = self.generateNextWeekSalesForcast()
+        data["initial_stock"] = self.getNextInitialStock()
+        data["week"] = self.week + 1
+        with open(file_path, 'w') as fp:
+            json.dump(data, fp)
 
-    def generateCDCToAffiliateInput(self, file_path):
-        wb = openpyxl.load_workbook("templates/template_platform_input.xlsx")
-        sheet = wb.active
-        sheet.cell(2, 2).value = f"W{self.week}/20"
-        cdc_prod_plan = self.pa_cdc.getProdPlan()
-        cdc_supply_demand = self.pa_cdc.getSupplyDemand()
-        cdc_queued_prod = self.pa_cdc.getQueuedProd()
-        cdc_initial_stock = self.cbn_cdc.initial_stock
-        cdc_prev_supply_plan = self.pa_cdc.getPrevSupplyPlan()
-        ohs_offset = 0
-        # header week before
-        sheet.cell(4, 8).value = f"W{self.week-1}/20"
-        for t in range(self.horizon):
-            # header weeks in
-            sheet.cell(4, 9 + t).value = f"W{self.week+t}/20"
-        for p in self.products:
-            product_block_start_row = 5 + ohs_offset
-            # stock onhand 
-            sheet.cell(product_block_start_row + 1, 8).value = cdc_initial_stock[p]
-            for t in range(self.horizon):
-                # programmed_reception Factory -> CDC (pdp + queued)
-                sheet.cell(product_block_start_row, 9 + t).value = cdc_prod_plan[p][t] + cdc_queued_prod[p][t]
-                j = 0
-                for a in self.affiliates.values():
-                    if p in a.products:
-                        # BA Affiliate -> CDC
-                        sheet.cell(product_block_start_row + 2 + j * 2, 9 + t).value = cdc_supply_demand[a.name][p][t]
-                        # PA CDC -> affiliate 
-                        sheet.cell(product_block_start_row + 2 + j * 2 + 1, 9 + t).value = cdc_prev_supply_plan[a.name][p][t]
-                        j += 1
-            nbr_ff_p = sum([1 for aff in self.affiliates.values() if p in aff.products])
-            ohs_offset += (2 * nbr_ff_p + 3)
-            
-        wb.save(file_path)
-    
     def runAffiliatesToCDC(self):
         for affiliate in self.affiliates.values():
             affiliate.run()
