@@ -20,7 +20,7 @@ class PA_CDC:
         horizon = self.model.horizon
         prev_supply_plan = {}
         for a, aff in self.model.affiliates.items():
-            prev_supply_plan[a] = {p: self.model.prev_supply_plan[a][p][aff.delivery_time:] + [0] * (horizon-aff.delivery_time) for p in self.model.products}
+            prev_supply_plan[a] = {p: self.model.prev_supply_plan[a][p][aff.delivery_time:] + [0] * (horizon-aff.delivery_time) for p in aff.products}
         return prev_supply_plan
 
     def getProductSupplyDemand(self):
@@ -80,5 +80,3 @@ class PA_CDC:
                         else: 
                             self.supply_plan[a][p][t] = 0
                     self.unavailability[a][p][t] = self.unavailability[a][p][t-1] + self.supply_demand[a][p][t] - self.supply_plan[a][p][t] 
-    
-        self.model.supply_plan = self.supply_plan

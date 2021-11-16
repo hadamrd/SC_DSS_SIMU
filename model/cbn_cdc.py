@@ -9,7 +9,7 @@ class CBN_CDC:
     def getPrevProdPlan(self):
         return {p: [0] * self.model.prod_time + self.model.prev_prod_plan[p][self.model.prod_time:] for p in self.model.products}
     
-    def getQeuedProd(self):
+    def getQueuedProd(self):
         return {p: self.model.prev_prod_plan[p][:self.model.prod_time] + [0] * (self.model.horizon - self.model.prod_time)
                 for p in self.model.products}
     
@@ -24,7 +24,7 @@ class CBN_CDC:
                                 ] for p in self.model.products}
         
     def run(self):
-        self.queued_prod = self.getQeuedProd()
+        self.queued_prod = self.getQueuedProd()
         self.prev_prod_plan = self.getPrevProdPlan()
         self.supply_demand = self.getSupplyDemand()
         self.product_supply_demand = self.getProductsSupplyDemand()
