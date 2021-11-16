@@ -7,10 +7,17 @@ class Factory:
         self.prod_plan = {p: [0] * model.horizon for p in model.products}
         self.unavailability = {p: [0] * model.horizon for p in model.products}
         self.prev_prod_plan = {p: model.prev_prod_plan[p][model.prod_time:] + [0] * model.prod_time for p in model.products}
-        
+    
+    def getProdDemand(self):
+        return {p: self.model.cbn_cdc.prod_demand[p][self.model.prod_time:] + [0] * self.model.prod_time for p in self.model.products}
+    
+    def getTotalNetDemand(self):
+        return [sum([self.prod_demand[p][t] for p in self.model.products]) for t in range(self.model.horizon)]
+    
     def run(self):
-        self.prod_demand = {p: self.model.cbn_cdc.prod_demand[p][self.model.prod_time:] + [0] * self.model.prod_time for p in self.model.products}
-        self.total_net_demand = [sum([self.prod_demand[p][t] for p in self.model.products]) for t in range(self.model.horizon)]
+        self.prod_demand = self.getProdDemand()
+        self.total_net_demand = self.getTotalNetDemand()
+        
         for p in self.model.products:
             self.prod_plan[p][0] = self.prev_prod_plan[p][0]
             self.prod_plan[p][1] = self.prev_prod_plan[p][1]

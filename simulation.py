@@ -12,6 +12,4 @@ if __name__ == "__main__":
         model.runCDCToFactory()
         model.generateCDCToAffiliateInput(f"platform_inputs/input_S{k}.xlsx")
         model.loadSupplyPlanFromExcel(f"platform_outputs/output_S{k}.xlsx")
-        model.generateNextInput(f"simu_inputs/input_S{k+1}.json")    
-    
-        
+        model.generateNextInput(f"simu_inputs/input_S{k+1}.json")

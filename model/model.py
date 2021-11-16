@@ -38,7 +38,7 @@ class Model:
         initial_stock = {}
         for a, aff in self.affiliates.items():
             initial_stock[a] = {
-                p: aff.initial_stock[p] + aff.imminent_supply[p][0] + (self.pa_cdc.supply_plan[a][p][0] if aff.delivery_time==0 else 0)\
+                p: aff.initial_stock[p] + aff.imminent_supply[p][0] + (self.supply_plan[a][p][0] if aff.delivery_time==0 else 0)\
                     - aff.sales_forcast[p][0] 
                 for p in aff.products
             } 
@@ -56,21 +56,11 @@ class Model:
                 next_supply_plan[a][p] = self.prev_supply_plan[a][p][1:aff.delivery_time+1] + self.supply_plan[a][p][1:self.horizon-aff.delivery_time]
                 next_supply_plan[a][p].append(next_supply_plan[a][p][-1])
         return next_supply_plan
-    
-    def nextSupplyPlanFromPrev(self):
-        next_supply_plan = {}
-        for a, aff in self.affiliates.items():
-            next_supply_plan[a] = {}
-            for p in aff.products:
-                next_supply_plan[a][p] = self.prev_supply_plan[a][p][1:aff.delivery_time+1] + self.prev_supply_plan[a][p][1:self.horizon-aff.delivery_time]
-                next_supply_plan[a][p].append(next_supply_plan[a][p][-1])
-        return next_supply_plan
-    
+
     def getNextProdPlan(self):
         prod_plan = {}
         for p in self.products:
-            prod_plan[p] = self.factory.prev_prod_plan[p][1:self.prod_time + 1] +\
-                self.factory.prod_plan[p][1:self.horizon - self.prod_time]
+            prod_plan[p] = self.prev_prod_plan[p][1:self.prod_time+1] + self.factory.prod_plan[p][1:self.horizon - self.prod_time]
             prod_plan[p].append(prod_plan[p][-1])
         return prod_plan
     
