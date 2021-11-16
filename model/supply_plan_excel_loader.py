@@ -8,6 +8,7 @@ def run(file_path, horizon):
         "004": "australia"
     }
     supply_demand = {}
+    print(file_path)
     wb = openpyxl.load_workbook(file_path)
     sheet = wb.active
     i = 0

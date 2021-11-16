@@ -27,3 +27,4 @@ class Factory:
                     self.prod_plan[p][t] = max(raw_need, self.prev_prod_plan[p][t])
                 self.prod_plan[p][t] = math.floor(self.prod_plan[p][t])
                 self.unavailability[p][t] = self.unavailability[p][t - 1] + self.prod_demand[p][t] - self.prod_plan[p][t]
+            

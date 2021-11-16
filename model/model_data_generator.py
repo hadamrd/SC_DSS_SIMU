@@ -19,7 +19,7 @@ init_data = {
     "affiliates": ["france", "spain", "chili", "australia"],
     "products": ["P1", "P2", "P3", "P4"],
     "factory_capacity": [76300] * 24,
-    "initial_stocks": {
+    "initial_stock": {
         "france": {
             "P1": 2000,
             "P2": 1000,
@@ -697,7 +697,7 @@ def run(week=None,
         sales_forcast=None,
         prev_prod_plan=None,
         prev_supply_plan=None,
-        initial_stocks=None,
+        initial_stock=None,
         file_name=None):
     if prev_supply_plan:
         init_data["prev_supply_plan"] = prev_supply_plan
@@ -705,8 +705,8 @@ def run(week=None,
         init_data["prev_prod_plan"] = prev_prod_plan
     if sales_forcast:
         init_data["sales_forcast"] = sales_forcast
-    if initial_stocks:
-        init_data["initial_stocks"] = initial_stocks
+    if initial_stock:
+        init_data["initial_stock"] = initial_stock
     if week:
         init_data["week"] = week
     if not file_name:

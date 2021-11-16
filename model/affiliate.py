@@ -4,7 +4,7 @@ class Affiliate:
         self.model = model
         self.products = model.sales_forcast[self.name].keys()
         self.delivery_time = model.delivery_time[self.name]
-        self.initial_stock = {p: model.initial_stocks[self.name][p] for p in self.products}
+        self.initial_stock = {p: model.initial_stock[self.name][p] for p in self.products}
         self.sales_forcast = {p: model.sales_forcast[self.name][p] for p in self.products}
         self.target_stock = {p: [model.target_stock[self.name]] * model.horizon for p in self.products}
         self.projected_stock = {p: [None for _ in range(model.horizon)]  for p in self.products}

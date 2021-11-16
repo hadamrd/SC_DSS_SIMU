@@ -1,12 +1,12 @@
 class CBN_CDC:
     def __init__(self, model) -> None:
         self.model = model
-        self.initial_stock = model.initial_stocks["cdc"]
+        self.initial_stock = model.initial_stock["cdc"]
         self.projected_stock = {p: [None] * model.horizon for p in model.products}
         self.target_stock = {p: [model.target_stock["cdc"]] * model.horizon for p in model.products}
         self.prod_demand = {p: [None] * model.horizon for p in model.products}
-        self.queued_prod = {p: model.prev_prod_plan[p][:2] + [0] * (model.horizon - 2) for p in model.products}
-        self.prev_prod_plan = {p: [0, 0] + model.prev_prod_plan[p][2:] for p in model.products}
+        self.queued_prod = {p: model.prev_prod_plan[p][:model.prod_time] + [0] * (model.horizon - model.prod_time) for p in model.products}
+        self.prev_prod_plan = {p: [0] * model.prod_time + model.prev_prod_plan[p][model.prod_time:] for p in model.products}
     
     def run(self):
         self.supply_demand = {a: {
