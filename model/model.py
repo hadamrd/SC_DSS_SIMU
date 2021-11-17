@@ -4,7 +4,7 @@ from .affiliate import Affiliate
 from .pa_cdc import PA_CDC
 from .factory import Factory
 from .cbn_cdc import CBN_CDC
-
+from . import platform_interface 
 class Model:
     def __init__(self, input_file) -> None:
         with open(input_file) as json_file:
@@ -72,8 +72,8 @@ class Model:
     def generateNextWeekSalesForcast(self):
         return sales_forcast_generator.run(self.sales_forcast, self.horizon)
     
-    def setCDCSupplyPlan(self, supply_plan):
-        self.cdc_supply_plan = supply_plan
+    def loadPlatformOutput(self, file_path):
+        self.cdc_supply_plan = platform_interface.loadSupplyPlan(file_path, self.affiliate_code, self.horizon)
     
     def generateNextWeekInput(self, file_path):
         data = {}
@@ -107,3 +107,10 @@ class Model:
         }
         with open(file_name, 'w') as fp:
             json.dump(snap, fp)
+
+    def getPlatformInput(self, file_path):
+        platform_interface.generateInput(file_path, self)
+        
+    def saveCDCSupplyPlan(self, file_path):
+        with open(file_path, 'w') as fp:
+            json.dump(self.cdc_supply_plan, fp)
