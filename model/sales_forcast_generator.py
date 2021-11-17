@@ -1,14 +1,15 @@
+import math
 import random
 import openpyxl
 
 affiliates = {
-	"france": {"min": 0, "max":20000, "products": ["P1", "P2", "P3", "P4"], "code": "001" },
-	"spain": {"min": 0, "max":10000, "products": ["P1", "P2"], "code": "002" },
-	"chili": {"min": 0, "max":5000, "products": ["P1", "P3"] , "code": "003"},
+	"france": {"min": 0, "max":10000, "products": ["P1", "P2", "P3", "P4"], "code": "001" },
+	"spain": {"min": 0, "max":5000, "products": ["P1", "P2"], "code": "002" },
+	"chili": {"min": 0, "max":10000, "products": ["P1", "P3"] , "code": "003"},
 	"australia": {"min": 0, "max":20000, "products": ["P1", "P2"], "code": "004" }
 }
 
-affiliate_rand_forcast_model = openpyxl.load_workbook('sales_forcast_affiliate_model.xlsx')
+model_wb = openpyxl.load_workbook('sales_forcast_affiliate_model.xlsx')
 
 def accumu(lis):
     total = 0
@@ -23,7 +24,7 @@ def randSalesForcast(a, horizon):
     return ans
 
 def getModelValues(affiliate, t):
-    model_sheet = affiliate_rand_forcast_model.get_sheet_by_name(affiliates[affiliate]["code"])
+    model_sheet = model_wb[affiliates[affiliate]["code"]]
     a = float(model_sheet.cell(row=2, column=t + 2).value)
     b = float(model_sheet.cell(row=3, column=t + 2).value)   
     c = float(model_sheet.cell(row=4, column=t + 2).value) 
@@ -42,18 +43,22 @@ def pickRand(min1, min2, max1, max2, prob):
         
 def calcRandCPV(horizon, affiliate, prev_pv):
     prev_cpv = list(accumu(prev_pv))
+    min_pv = affiliates[affiliate]['min']
+    max_pv = affiliates[affiliate]['max']
+    cpv = prev_cpv[1:] + [prev_cpv[-1] + random.randint(min_pv, max_pv)]
+    
     acpv = [0 for _ in range(horizon)]
     for t in range(horizon):
-        min_pv = affiliates[affiliate]['min']
-        max_pv = affiliates[affiliate]['max']
-        cpv = prev_cpv[t+1] if t + 1 < horizon else prev_cpv[horizon-1] + random.randint(min_pv, max_pv)
         a, b, c, d, rw = getModelValues(affiliate, t)
-        min_1 = round(cpv + a * (cpv - prev_cpv[rw-1]))
-        min_2 = round(cpv + b * (cpv - prev_cpv[rw-1]))
-        max_2 = round(cpv + c * (cpv - prev_cpv[rw-1]))
-        max_1 = round(cpv + d * (cpv - prev_cpv[rw-1]))
-        rd = pickRand(min_1, min_2, max_1, max_2, 0.8)
-        acpv[t] =  max(rd, acpv[t-1] if t>0 else 0)
+        min_1 = round(cpv[t] + a * (cpv[t] - prev_cpv[rw-1]))
+        min_2 = round(cpv[t] + b * (cpv[t] - prev_cpv[rw-1]))
+        max_2 = round(cpv[t] + c * (cpv[t] - prev_cpv[rw-1]))
+        max_1 = round(cpv[t] + d * (cpv[t] - prev_cpv[rw-1]))
+        rd = pickRand(min_1, min_2, max_1, max_2, 0.6)
+        if t > 0:
+            while rd < acpv[t-1]:
+                rd = pickRand(min_1, min_2, max_1, max_2, 0.6)
+        acpv[t] = rd
     return acpv
         
 def genRandSalesForcast(horizon, affiliate, prev_pv=None):
@@ -72,3 +77,19 @@ def run(prev_sales_forcast, horizon):
             p: genRandSalesForcast(horizon, a, prev_sales_forcast[a][p]) for p in aff["products"]
         } for a, aff in affiliates.items()
     }
+
+if __name__=="__main__":
+    cm = 0
+    cv = 0
+    for k in range(10000):
+        h = 24
+        prev = [random.randint(0, 10000) for _ in range(h)]
+        ans = genRandSalesForcast(h, "france", prev)
+        prev = prev + [0]
+        ans = [0] + ans
+        mean = sum([ans[t] - prev[t] for t in range(h+1)]) / (h+1)
+        var =  math.sqrt(sum([(ans[t] - prev[t] - mean)**2 for t in range(h+1)]) / (h+1))
+        cm += mean
+        cv += var
+    print("mean diff: ", cm / 10000)
+    print("sigma: ", cv / 10000)
