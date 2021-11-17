@@ -1,33 +1,4 @@
 {
-    "horizon": 24,
-    "prod_time": 2,
-    "week": 2,
-    "delivery_time": {
-        "france": 0,
-        "spain": 1,
-        "chili": 2,
-        "australia": 3
-    },
-    "target_stock": {
-        "france": 10000,
-        "spain": 5000,
-        "chili": 10000,
-        "australia": 20000,
-        "cdc": 30000
-    },
-    "affiliates": [
-        "france",
-        "spain",
-        "chili",
-        "australia"
-    ],
-    "products": [
-        "P1",
-        "P2",
-        "P3",
-        "P4"
-    ],
-    "factory_capacity": [76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300, 76300],
     "initial_stock": {
         "france": {
             "P1": 2000,
@@ -699,5 +670,6 @@
                 14187
             ]
         }
-    }
+    },
+    "week": 2
 }

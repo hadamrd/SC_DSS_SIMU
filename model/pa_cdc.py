@@ -39,6 +39,7 @@ class PA_CDC:
         return self.model.cbn_cdc.getQueuedProd()
         
     def run(self):
+        affiliates = self.model.affiliates
         self.queued_prod = self.getQueuedProd()
         self.prod_plan = self.getProdPlan()
         self.supply_demand = self.getSupplyDemand()
@@ -46,37 +47,31 @@ class PA_CDC:
         self.prev_supply_plan = self.getPrevSupplyPlan()
         self.total_prev_supply_plan = self.getTotalPrevSupplyPlan()
         
-        for a, affiliate in self.model.affiliates.items():
+        for a, affiliate in affiliates.items():
             for p in affiliate.products:
-                self.supply_plan[a][p][0] = self.prev_supply_plan[a][p][0]
-                self.supply_plan[a][p][1] = self.prev_supply_plan[a][p][1]
+                self.supply_plan[a][p][:2] = self.prev_supply_plan[a][p][:2]
                 self.unavailability[a][p][0] = self.supply_demand[a][p][0] - self.supply_plan[a][p][0]
         
         for p in self.model.products:
             self.raw_need[p][0] = self.product_supply_demand[p][0]
-            self.possible_to_promise[p][0] = self.total_prev_supply_plan[p][0]
-            total_supply_plan = sum([self.supply_plan[a][p][0] if p in aff.products else 0 for a, aff in self.model.affiliates.items()])
-            self.projected_stock[p][0] = self.initial_stock[p] + self.queued_prod[p][0] - total_supply_plan
+            self.possible_to_promise[p][0:2] = self.total_prev_supply_plan[p][0:2]
+            product_supply_plan = sum([self.supply_plan[a][p][0] for a, aff in affiliates.items() if p in aff.products])
+            self.projected_stock[p][0] = self.initial_stock[p] + self.queued_prod[p][0] - product_supply_plan
 
-        for t in range(1, self.model.horizon):
-            for p in self.model.products:
-                total_unavailability = sum([self.unavailability[a][p][t-1] for a, aff in self.model.affiliates.items() if p in aff.products])
-                self.raw_need[p][t] = self.product_supply_demand[p][t] + total_unavailability
-                
-            for p in self.model.products:
-                total_supply_plan = sum([self.supply_plan[a][p][t] for a, aff in self.model.affiliates.items() if p in aff.products])
-                self.projected_stock[p][t] = self.projected_stock[p][t-1] + self.prod_plan[p][t] + self.queued_prod[p][t] - total_supply_plan
-                if t < 2:
-                    self.possible_to_promise[p][t] = self.total_prev_supply_plan[p][t]
-                else:
-                    self.possible_to_promise[p][t] = max(min(self.raw_need[p][t], self.prod_plan[p][t] + self.queued_prod[p][t] + self.projected_stock[p][t-1]), 0)
-            
-            for a, affiliate in self.model.affiliates.items(): 
-                for p in affiliate.products:
-                    if t >= 2:
-                        if self.raw_need[p][t] > 0:
-                            supply_ratio = (self.supply_demand[a][p][t] + self.unavailability[a][p][t-1]) / self.raw_need[p][t]
-                            self.supply_plan[a][p][t] = max(round(supply_ratio * self.possible_to_promise[p][t]), 0)
-                        else: 
-                            self.supply_plan[a][p][t] = 0
-                    self.unavailability[a][p][t] = self.unavailability[a][p][t-1] + self.supply_demand[a][p][t] - self.supply_plan[a][p][t] 
+            for t in range(1, self.model.horizon):
+                product_unavailability = sum([self.unavailability[a][p][t-1] for a, aff in affiliates.items() if p in aff.products])
+                product_supply_plan = sum([self.supply_plan[a][p][t] for a, aff in affiliates.items() if p in aff.products])
+                self.raw_need[p][t] = self.product_supply_demand[p][t] + product_unavailability
+                self.projected_stock[p][t] = self.projected_stock[p][t-1] + self.prod_plan[p][t] + self.queued_prod[p][t] - product_supply_plan
+                if t >= 2:
+                    prejected_available_quantity = self.prod_plan[p][t] + self.queued_prod[p][t] + self.projected_stock[p][t-1]
+                    self.possible_to_promise[p][t] = max(min(self.raw_need[p][t], prejected_available_quantity), 0)
+                for a, aff in affiliates.items(): 
+                    if p in aff.products:
+                        if t >= 2:
+                            if self.raw_need[p][t] > 0:
+                                supply_ratio = (self.supply_demand[a][p][t] + self.unavailability[a][p][t-1]) / self.raw_need[p][t]
+                                self.supply_plan[a][p][t] = max(round(supply_ratio * self.possible_to_promise[p][t]), 0)
+                            else: 
+                                self.supply_plan[a][p][t] = 0
+                        self.unavailability[a][p][t] = self.unavailability[a][p][t-1] + self.supply_demand[a][p][t] - self.supply_plan[a][p][t] 

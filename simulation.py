@@ -16,7 +16,7 @@ if __name__ == "__main__":
         cdc_supply_plan = platform_interface.loadSupplyPlan(f"platform_outputs/output_S{k}.xlsx",
                                                             model.affiliate_code,
                                                             model.horizon)
-        with open(f"simu_outputs/supply_plan_S{k}.json", 'w') as fp:
+        with open(f"platform_outputs/supply_plan_S{k}.json", 'w') as fp:
             json.dump(cdc_supply_plan, fp)
         model.setCDCSupplyPlan(cdc_supply_plan)
         model.generateNextWeekInput(f"simu_inputs/input_S{k+1}.json")
