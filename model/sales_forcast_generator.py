@@ -24,10 +24,10 @@ def randSalesForcast(a, horizon):
 
 def getModelValues(affiliate, t):
     model_sheet = affiliate_rand_forcast_model.get_sheet_by_name(affiliates[affiliate]["code"])
-    a = int(model_sheet.cell(row=2, column=t + 2).value)
-    b = int(model_sheet.cell(row=3, column=t + 2).value)   
-    c = int(model_sheet.cell(row=4, column=t + 2).value) 
-    d = int(model_sheet.cell(row=5, column=t + 2).value)
+    a = float(model_sheet.cell(row=2, column=t + 2).value)
+    b = float(model_sheet.cell(row=3, column=t + 2).value)   
+    c = float(model_sheet.cell(row=4, column=t + 2).value) 
+    d = float(model_sheet.cell(row=5, column=t + 2).value)
     ref_week = int(model_sheet.cell(row=6, column=t + 2).value)
     return a, b, c, d, ref_week
 
@@ -48,10 +48,10 @@ def calcRandCPV(horizon, affiliate, prev_pv):
         max_pv = affiliates[affiliate]['max']
         cpv = prev_cpv[t+1] if t + 1 < horizon else prev_cpv[horizon-1] + random.randint(min_pv, max_pv)
         a, b, c, d, rw = getModelValues(affiliate, t)
-        min_1 = cpv + a * (cpv - prev_cpv[rw-1])
-        min_2 = cpv + b * (cpv - prev_cpv[rw-1]) 
-        max_2 = cpv + c * (cpv - prev_cpv[rw-1])
-        max_1 = cpv + d * (cpv - prev_cpv[rw-1]) 
+        min_1 = round(cpv + a * (cpv - prev_cpv[rw-1]))
+        min_2 = round(cpv + b * (cpv - prev_cpv[rw-1]))
+        max_2 = round(cpv + c * (cpv - prev_cpv[rw-1]))
+        max_1 = round(cpv + d * (cpv - prev_cpv[rw-1]))
         rd = pickRand(min_1, min_2, max_1, max_2, 0.8)
         acpv[t] =  max(rd, acpv[t-1] if t>0 else 0)
     return acpv
