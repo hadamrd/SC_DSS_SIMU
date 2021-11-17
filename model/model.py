@@ -98,4 +98,12 @@ class Model:
         self.pa_cdc.run()
         self.cdc_supply_plan = self.pa_cdc.supply_plan
         
-
+    def saveSnapShot(self, file_name):
+        snap = {
+            "supply_plan": self.getNextSupplyPlan(),
+            "prod_plan": self.getNextProdPlan(),
+            "supply_demand": self.getAffiliateSupplyDemand(),
+            "prod_demand": self.getCDCProdDemand()
+        }
+        with open(file_name, 'w') as fp:
+            json.dump(snap, fp)

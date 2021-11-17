@@ -27,14 +27,14 @@ def generateInput(file_path, model):
     cdc_queued_prod = model.pa_cdc.getQueuedProd()
     cdc_initial_stock = model.cbn_cdc.initial_stock
     cdc_prev_supply_plan = model.cdc_supply_plan
-    ohs_offset = 0
+    offset = 0
     # header week before
     sheet.cell(4, 8).value = f"W{model.week-1}/20"
     for t in range(model.horizon):
         # header weeks in
         sheet.cell(4, 9 + t).value = f"W{model.week+t}/20"
     for p in model.products:
-        product_block_start_row = 5 + ohs_offset
+        product_block_start_row = 5 + offset
         # stock onhand 
         sheet.cell(product_block_start_row + 1, 8).value = cdc_initial_stock[p]
         for t in range(model.horizon):
@@ -49,5 +49,5 @@ def generateInput(file_path, model):
                     sheet.cell(product_block_start_row + 2 + j * 2 + 1, 9 + t).value = cdc_prev_supply_plan[a.name][p][t]
                     j += 1
         nbr_ff_p = sum([1 for aff in model.affiliates.values() if p in aff.products])
-        ohs_offset += (2 * nbr_ff_p + 3)
+        offset += (2 * nbr_ff_p + 3)
     wb.save(file_path)
