@@ -3,10 +3,10 @@ import random
 import openpyxl
 
 affiliates = {
-	"france": {"min": 0, "max":10000, "products": ["P1", "P2", "P3", "P4"], "code": "001" },
-	"spain": {"min": 0, "max":5000, "products": ["P1", "P2"], "code": "002" },
-	"chili": {"min": 0, "max":10000, "products": ["P1", "P3"] , "code": "003"},
-	"australia": {"min": 0, "max":20000, "products": ["P1", "P2"], "code": "004" }
+	"france": {"min": 0, "max":200, "products": ["P1", "P2", "P3", "P4"], "code": "001" },
+	"spain": {"min": 0, "max":200, "products": ["P1", "P2"], "code": "002" },
+	"chili": {"min": 0, "max":300, "products": ["P1", "P3"] , "code": "003"},
+	"australia": {"min": 0, "max":400, "products": ["P1", "P2"], "code": "004" }
 }
 
 model_wb = openpyxl.load_workbook('sales_forcast_affiliate_model.xlsx')
@@ -20,7 +20,7 @@ def accumu(lis):
 def randSalesForcast(a, horizon):
     min = affiliates[a]['min']
     max = affiliates[a]['max']
-    ans = [random.randint(min, max) for _ in range(horizon)]
+    ans = [10 * random.randint(min//10, max//10) for _ in range(horizon)]
     return ans
 
 def getModelValues(affiliate, t):
@@ -45,7 +45,7 @@ def calcRandCPV(horizon, affiliate, prev_pv):
     prev_cpv = list(accumu(prev_pv))
     min_pv = affiliates[affiliate]['min']
     max_pv = affiliates[affiliate]['max']
-    cpv = prev_cpv[1:] + [prev_cpv[-1] + random.randint(min_pv, max_pv)]
+    cpv = prev_cpv[1:] + [prev_cpv[-1] + 10 * random.randint(min_pv//10, max_pv//10)]
     
     acpv = [0 for _ in range(horizon)]
     for t in range(horizon):

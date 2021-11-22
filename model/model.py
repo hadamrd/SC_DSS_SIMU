@@ -73,7 +73,7 @@ class Model:
         return sales_forcast_generator.run(self.sales_forcast, self.horizon)
     
     def loadPlatformOutput(self, file_path):
-        self.cdc_supply_plan = platform_interface.loadSupplyPlan(file_path, self.affiliate_code, self.horizon)
+        self.cdc_supply_plan = platform_interface.loadSupplyPlan(file_path, self.affiliate_code, self.horizon, self.week)
     
     def generateNextWeekInput(self, file_path):
         data = {}

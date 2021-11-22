@@ -1,6 +1,6 @@
 import openpyxl
 
-def loadSupplyPlan(file_path, affiliate_code, horizon):
+def loadSupplyPlan(file_path, affiliate_code, horizon, curr_week):
     supply_demand = {}
     wb = openpyxl.load_workbook(file_path)
     sheet = wb.active
@@ -14,7 +14,7 @@ def loadSupplyPlan(file_path, affiliate_code, horizon):
             supply_demand[affiliate] = {}
         if product not in supply_demand[affiliate]:
             supply_demand[affiliate][product] = [None for _ in range(horizon)]
-        supply_demand[affiliate][product][week-2] = quantity
+        supply_demand[affiliate][product][week-curr_week] = quantity
         i += 1
     return supply_demand
 
