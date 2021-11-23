@@ -36,7 +36,7 @@ def simuWithPlatform(start_week, end_week):
 if __name__ == "__main__":
     start_week = 2
     end_week = 40
-    simuWithPlatform(start_week, end_week)
-    #simuWithoutPlatform(start_week, end_week)
+    #simuWithPlatform(start_week, end_week)
+    simuWithoutPlatform(start_week, end_week)
     simu_history_generator.run()
 

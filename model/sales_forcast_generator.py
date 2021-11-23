@@ -54,7 +54,7 @@ def calcRandCPV(horizon, affiliate, prev_pv):
         min_2 = round(cpv[t] + b * (cpv[t] - prev_cpv[rw-1]))
         max_2 = round(cpv[t] + c * (cpv[t] - prev_cpv[rw-1]))
         max_1 = round(cpv[t] + d * (cpv[t] - prev_cpv[rw-1]))
-        rd = pickRand(min_1, min_2, max_1, max_2, 0.6)
+        rd = pickRand(min_1, min_2, max_1, max_2, 0.5)
         acpv[t] = max(rd, acpv[t-1] if t>0 else 0)
     return acpv
         
