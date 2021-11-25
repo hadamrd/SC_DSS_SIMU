@@ -1,8 +1,9 @@
+from random import randint
 import re
 import openpyxl
 from model.model import Model
 import model.utils as utils
-
+import matplotlib.pyplot as plt
 
 class RiskManager:
 
@@ -11,7 +12,7 @@ class RiskManager:
         self.horizon = self.model.horizon - 4
 
     def sumOverAffiliate(self, q, p, param):
-        return [sum([q[a][p][param][t] for a, aff in self.model.affiliate_product.items() if p in aff]) for t in range(self.horizon)]
+        return [sum([q[a][p][param][t] for a in q if p in q[a]]) for t in range(self.horizon)]
 
     def loadDModel(self, file_name: str):
         """Load demand uncertainty model from excel file
@@ -35,11 +36,23 @@ class RiskManager:
                 quantity = utils.getSubRow(sh, r, 5, self.horizon)
             self.d_aff_model[aff][product][param] = quantity
             r += 1
-        for p in self.model.products:
-            for param in ["a", "b", "c", "d"]:
-                self.d_model[p][param] = self.sumOverAffiliate(self.d_aff_model, p, param)
-            self.d_model[p]["model_type"] = self.d_aff_model["france"]["P1"]["ModelType"]
-            self.d_model[p]["ref_week"] = self.d_aff_model["france"]["P1"]["RefWeek"]
+    
+    def getDpm(self, d, p):
+        params = ["a", "b", "c", "d"]
+        dist = {param: [0] * self.horizon for param in params + ["ref_week", "model_type"]}
+        for a in d:
+            if p in d[a]:
+                Q = list(utils.accumu(d[a][p]))
+                for t in range(self.horizon):
+                    rw_t = self.d_aff_model[a][p]["RefWeek"][t]
+                    model_type = self.d_aff_model[a][p]["ModelType"][t] 
+                    for param in params:
+                        alpha_t = self.d_aff_model[a][p][param][t]
+                        F_t = Q[t] - Q[rw_t-2] if rw_t-2>0 else Q[t]
+                        if model_type == "I1":
+                            F_t /= t - (rw_t-1) + 1
+                        dist[param][t] += Q[t] + alpha_t * F_t
+        return dist
 
     def readRefWeekRow(self, sheet, row, start_col):
         string_ref_weeks = utils.getSubRow(sheet, row, start_col, self.horizon)
@@ -47,11 +60,6 @@ class RiskManager:
         return ref_weeks
         
     def loadRModel(self, file_name: str) -> None:
-        """Load the receptin uncertainty model 
-
-        Args:
-            file_name (str): the excel file containing the exert data
-        """
         wb = openpyxl.load_workbook(file_name)
         sh = wb.active
         params = ["a", "b", "c", "d", "model_type", "ref_week"]
@@ -61,29 +69,80 @@ class RiskManager:
             for j, param in enumerate(params)
         } for k, p in enumerate(self.model.products) }
     
-    def getPossibilityDistParams(self, quantity: dict, model: dict) -> dict:
-        """calculate the trapeziodal possibility distribution params for a given quantity
-
-        Args:
-            quantity (dict): quantity 
-            model (dict): expert uncertainty model
-
-        Returns:
-            dict: trapeziodal possibility distribution params 
-        """
+    def getRpm(self, r:dict, p: str) -> dict:
         params = ["a", "b", "c", "d"]
-        Q = list(utils.accumu(quantity))
-        dist = {p: [None] * self.horizon for p in params}
+        Q = list(utils.accumu(r))
+        dist = {param: [None] * self.horizon for param in params}
         for t in range(self.horizon):
-            rw_t = model["ref_week"][t]
-            model_type = model["model_type"][t]
+            rw_t = self.r_model[p]["ref_week"][t]
+            model_type = self.r_model[p]["model_type"][t]
             F_t = Q[t] - Q[rw_t-2] if rw_t-2>0 else Q[t]
             for param in params:
                 if model_type == "I2":
-                    dist[param][t] = round(Q[t] + model[param][t] * F_t)
+                    dist[param][t] = round(Q[t] + self.r_model[p][param][t] * F_t)
                 elif model_type == "I1":
-                    dist[param][t] = round(Q[t] + model[param][t] * F_t / (t - (rw_t - 1) + 1))
+                    dist[param][t] = round(Q[t] + self.r_model[p][param][t] * F_t / (t - (rw_t-1) + 1))
         return dist
+
+    def tpzd(self, a, b, c, d, x):
+        if x < a:
+            return 0
+        elif x < b:
+            return (x - a) / (b - a)
+        elif x < c:
+            return 1
+        elif x < d:
+            return (d - x) / (d - c)
+        else:
+            return 0
+    
+    def l1p(self, a, b, s0, x):
+        if x - s0 < a:
+            return 0
+        elif x - s0 < b:
+            return (x - s0 - a) / (b - a)
+        else:
+            return 1
+    
+    def l2p(self, c, d, x):
+        if x > d:
+            return 0
+        elif x > c:
+            return (d - x) / (d - c)
+        else:
+            return 1
+
+    def sampleTrapeze(self, a, b, c, d, nbr_ech):
+        min = a - a/20
+        max = d + d/20
+        ax = utils.linspace(min, max, nbr_ech)
+        y = [self.tpzd(a, b, c, d, x) for x in ax]
+        return ax, y
+    
+    def sampleL1Possibility(self, rpm, s0, t, nbr_ech):
+        a, b, d = rpm["a"][t], rpm["b"][t], rpm["d"][t]
+        min = a - a/20
+        max = d + d/20
+        ax = utils.linspace(min, max, nbr_ech)
+        l1_p = [self.l1p(a, b, s0, x) for x in ax]
+        return ax, l1_p
+    
+    def sampleL2Possibility(self, dpm, t, nbr_ech):
+        a, c, d = dpm["a"][t], dpm["c"][t], dpm["d"][t]
+        min = a - a/20
+        max = d + d/20
+        ax = utils.linspace(min, max, nbr_ech)
+        l2_p = [self.l2p(c, d, x) for x in ax]
+        return ax, l2_p
+    
+    def sampleL4Possibility(self, dpm, rpm, s0, t, nbr_ech):
+        ax_l2, l2_p = self.sampleL2Possibility(dpm, t, nbr_ech)
+        ax_l1, l1_p = self.sampleL1Possibility(rpm, s0, t, nbr_ech)
+        min_ax = min(ax_l1[0], ax_l2[0])
+        max_ax = max(ax_l1[-1], ax_l2[-1])
+        ax = utils.linspace(min_ax, max_ax, nbr_ech)
+        l4_p = [max(l1, l2) for l2, l1 in zip(l1_p, l2_p)]
+        return ax, l4_p
 
     def getL1Possibility(self, rpm: dict, x: dict, s0: dict) -> dict:
         """calculate L1 possibility for every period 't' in the horizon
@@ -96,14 +155,7 @@ class RiskManager:
         Returns:
             dict: L1 possibility
         """
-        l1_possibility = [None for _ in range(self.horizon)]
-        for t in range(self.horizon):
-            if x[t] - s0 < rpm["a"][t]:
-                l1_possibility[t] = 0
-            elif x[t] - s0 < rpm["b"][t]:
-                l1_possibility[t] = (x[t] - s0 - rpm["a"][t]) / (rpm["b"][t] - rpm["a"][t])
-            else:
-                l1_possibility[t] = 1
+        l1_possibility = [self.l1p(rpm["a"][t], rpm["b"][t], s0, x[t]) for t in range(self.horizon)]
         return l1_possibility
 
     def getL2Possibility(self, dpm: dict, x: dict) -> dict:
@@ -116,14 +168,7 @@ class RiskManager:
         Returns:
             dict: L2 possibility
         """
-        l2_possibility = [None for _ in range(self.horizon)]
-        for t in range(self.horizon):
-            if x[t] > dpm["d"][t]:
-                l2_possibility[t] = 0
-            elif x[t] > dpm["c"][t]:
-                l2_possibility[t] = (dpm["d"][t] - x[t]) / (dpm["d"][t] - dpm["c"][t])
-            else:
-                l2_possibility[t] = 1
+        l2_possibility = [self.l2p(dpm["c"][t], dpm["d"][t], x[t]) for t in range(self.horizon)]
         return l2_possibility
 
     def getL4Possibility(self, l1p: dict, l2p: dict) -> dict:
@@ -138,38 +183,74 @@ class RiskManager:
         l4_possibility = [max(l1p[t], l2p[t]) for t in range(self.horizon)]
         return l4_possibility
     
+    def getNL4Derivative(self, rpm, dpm, x, t):
+        a1, b1, c1, d1 = rpm["a"][t], rpm["b"][t], rpm["c"][t], rpm["d"][t]
+        a2, b2, c2, d2 = dpm["a"][t], dpm["b"][t], dpm["c"][t], dpm["d"][t]
+        alpha = min(c1, c2)    
+        chi = max(b1, b2)
+        if min(d1, d2) < max(a1, a2):
+            beta = min(d1, d2)
+            gama = max(a1, a2)
+            if gama < x[t] <= chi:
+                return 1 / (chi - gama)
+            elif alpha < x[t] <= beta:
+                return - 1 / (beta - alpha)
+            else:
+                return 0
+        elif min(c1, c2) > max(b1, b2):
+            return 0
+        else:
+            beta = max(a1, a2)
+            gama = min(d1, d2)
+            if x[t] < alpha:
+                return 0
+            elif x[t] > chi:
+                return 0
+            elif chi - beta + gama - alpha != 0:
+                x_star = (gama * (chi - beta) + beta * (gama - alpha)) / (chi - beta + gama - alpha)
+                if alpha < x[t] < x_star:
+                    return -1 / (gama - alpha)
+                elif x_star < x[t] < chi:
+                    return 1 / (chi - beta)
+                else:
+                    return 0
+            else:
+                return 0
+    
+    def getG(self, rpm, dpm, s0, x):
+        l1p = self.getL1Possibility(rpm, x, s0)
+        l2p = self.getL2Possibility(dpm, x)
+        l4p = self.getL4Possibility(l1p, l2p)
+        return 1 - min(l4p)
+
+    def findSolX(self, rpm, dpm, s0, x):
+        mu = 0.1
+        lam = 0.5
+        sumx_0 = x[-1]
+        g = 1
+        nbiter = 0
+        while g > 0.5 and nbiter < 100:
+            gradNl4 = self.getNL4Gradient(rpm, dpm, x, lam, sumx_0)
+            for t in range(self.horizon):
+                x[t] -= mu * gradNl4[t]
+            lam -= mu * gradNl4[-1]
+            g = self.getG(rpm, dpm, s0, x)
+            nbiter += 1
+        return x, g
+
+    def getNL4Gradient(self, rpm, dpm, x, lam, sumx_0):
+        sum_x = x[-1]
+        grad_NL4 = [self.getNL4Derivative(rpm, dpm, x, t) for t in range(self.horizon-1)]
+        grad_NL4 += [self.getNL4Derivative(rpm, dpm, x, self.horizon - 1) + lam]
+        grad_NL4 +=  [sum_x - sumx_0]
+        print(grad_NL4)
+        return grad_NL4
+
+
+
+    
+
+
 
 if __name__ == "__main__":
-    
-    model = Model("simu_inputs/global_input.json")
-    risk_manager = RiskManager(model)
-    risk_manager.loadDModel("uncertainty_models/UMCDF_I2.xlsx")
-    risk_manager.loadRModel("uncertainty_models/UMCRF_I1.xlsx")
-    
-    for week in range(2, 21):
-        print(f"# gravity for week {week}")
-        model.loadWeekInput(f"simu_inputs/input_S{week}.json")
-        model.runWeek()
-
-        pa = model.pa_cdc.product_supply_plan
-        initial_stock = model.pa_cdc.initial_stock
-        reception = model.getCDCReception()
-        demand = model.pa_cdc.getProductSupplyDemand()
-
-        for p in model.products:
-            x = list(utils.accumu(pa[p]))
-            r = list(utils.accumu(reception[p]))
-            d = list(utils.accumu(demand[p]))
-            s0 = initial_stock[p]
-            rpm = risk_manager.getPossibilityDistParams(r, risk_manager.r_model[p])
-            dpm = risk_manager.getPossibilityDistParams(d, risk_manager.d_model[p])
-            l1p = risk_manager.getL1Possibility(rpm, x, s0)
-            l2p = risk_manager.getL2Possibility(dpm, x)
-            l4p = risk_manager.getL4Possibility(l1p, l2p)
-            l4n = [1 - l for l in l4p]
-            G = max(l4n)
-            print(p, ", L4 Nec: ", l4n, ", G: ", G)
-        
-        model.generateNextWeekInput(f"simu_inputs/input_S{week+1}.json")
-
-
+    pass
