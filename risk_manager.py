@@ -77,11 +77,12 @@ class RiskManager:
         for t in range(self.horizon):
             rw = model["ref_week"][t]
             model_type = model["model_type"][t]
+            F_t = Q[t] - Q[rw-2] if rw-2>0 else Q[t]
             for param in params:
                 if model_type == "I2":
-                    dist[param][t] = round(Q[t] + model[param][t] * (Q[t] - Q[rw-1]))
+                    dist[param][t] = round(Q[t] + model[param][t] * (Q[t] - Q[rw-2]))
                 elif model_type == "I1":
-                    dist[param][t] = round(Q[t] + model[param][t] * (Q[t] - Q[rw-1]) / (t - (rw - 1) + 1))
+                    dist[param][t] = round(Q[t] + model[param][t] * (Q[t] - Q[rw-2]) / (t - (rw - 1) + 1))
         return dist
 
     def getL1Possibility(self, rpm: dict, x: dict, s0: dict) -> dict:
