@@ -1,8 +1,9 @@
-import math
+import datetime
 import random
 import openpyxl
 from . import utils 
 
+random.seed(datetime.datetime.now())
 
 class Sales:
 
@@ -25,7 +26,7 @@ class Sales:
         alpha = random.random()
         x1 = alpha * (b - a) + a
         x2 = d - alpha * (d - c)
-        rd = x1 if random.random() < 0.5 else x2
+        rd = random.choice([x1, x2])
         rd = round(rd / 10) * 10
         return rd
 

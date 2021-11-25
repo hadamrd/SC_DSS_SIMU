@@ -75,14 +75,14 @@ class RiskManager:
         Q = list(utils.accumu(quantity))
         dist = {p: [None] * self.horizon for p in params}
         for t in range(self.horizon):
-            rw = model["ref_week"][t]
+            rw_t = model["ref_week"][t]
             model_type = model["model_type"][t]
-            F_t = Q[t] - Q[rw-2] if rw-2>0 else Q[t]
+            F_t = Q[t] - Q[rw_t-2] if rw_t-2>0 else Q[t]
             for param in params:
                 if model_type == "I2":
-                    dist[param][t] = round(Q[t] + model[param][t] * (Q[t] - Q[rw-2]))
+                    dist[param][t] = round(Q[t] + model[param][t] * F_t)
                 elif model_type == "I1":
-                    dist[param][t] = round(Q[t] + model[param][t] * (Q[t] - Q[rw-2]) / (t - (rw - 1) + 1))
+                    dist[param][t] = round(Q[t] + model[param][t] * F_t / (t - (rw_t - 1) + 1))
         return dist
 
     def getL1Possibility(self, rpm: dict, x: dict, s0: dict) -> dict:
@@ -151,19 +151,25 @@ if __name__ == "__main__":
         model.loadWeekInput(f"simu_inputs/input_S{week}.json")
         model.runWeek()
 
-        x = model.pa_cdc.product_supply_plan
-        s0 = model.pa_cdc.initial_stock
-        r = model.getCDCReception()
-        d = model.pa_cdc.getProductSupplyDemand()
+        pa = model.pa_cdc.product_supply_plan
+        initial_stock = model.pa_cdc.initial_stock
+        reception = model.getCDCReception()
+        demand = model.pa_cdc.getProductSupplyDemand()
 
         for p in model.products:
-            rpm = risk_manager.getPossibilityDistParams(r[p], risk_manager.r_model[p])
-            dpm = risk_manager.getPossibilityDistParams(d[p], risk_manager.d_model[p])
-            l1p = risk_manager.getL1Possibility(rpm, x[p], s0[p])
-            l2p = risk_manager.getL2Possibility(dpm, x[p])
+            x = list(utils.accumu(pa[p]))
+            r = list(utils.accumu(reception[p]))
+            d = list(utils.accumu(demand[p]))
+            s0 = initial_stock[p]
+            rpm = risk_manager.getPossibilityDistParams(r, risk_manager.r_model[p])
+            dpm = risk_manager.getPossibilityDistParams(d, risk_manager.d_model[p])
+            l1p = risk_manager.getL1Possibility(rpm, x, s0)
+            l2p = risk_manager.getL2Possibility(dpm, x)
             l4p = risk_manager.getL4Possibility(l1p, l2p)
             l4n = [1 - l for l in l4p]
             G = max(l4n)
             print(p, ", L4 Nec: ", l4n, ", G: ", G)
+        
+        model.generateNextWeekInput(f"simu_inputs/input_S{week+1}.json")
 
 
