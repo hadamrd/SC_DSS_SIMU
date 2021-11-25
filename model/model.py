@@ -1,5 +1,5 @@
 import json
-from . import sales_forcast_generator
+from .sales import Sales
 from .affiliate import Affiliate
 from .pa_cdc import PA_CDC
 from .factory import Factory
@@ -17,7 +17,17 @@ class Model:
         self.delivery_time = inputs["delivery_time"]
         self.target_stock = inputs["target_stock"]
         self.factory_capacity = inputs["factory_capacity"]
+        self.affiliate_product = inputs["affiliate_product"]
+        self.affiliate_pv_range = inputs["affiliate_pv_range"]
+        self.sales_uncertainty_model_file = inputs["sales_uncertainty_model_file"]
+        self.sales_module = Sales(self)
     
+    def getCDCReception(self):
+        cdc_prod_plan = self.pa_cdc.getProdPlan()
+        cdc_queued_prod = self.pa_cdc.getQueuedProd()
+        return {p: [cdc_prod_plan[p][t] + cdc_queued_prod[p][t] for t in range(self.horizon)] for p in self.products}
+        
+
     def loadWeekInput(self, input_file):
         with open(input_file) as json_file:
             inputs = json.load(json_file)
@@ -70,8 +80,17 @@ class Model:
         return self.cbn_cdc.prod_demand
     
     def generateNextWeekSalesForcast(self):
-        return sales_forcast_generator.run(self.sales_forcast, self.horizon)
-    
+        return {
+            a: {
+                p: self.sales_module.genRandSalesForcast(a, self.sales_forcast[a][p]) for p in aff_products
+            } for a, aff_products in self.affiliate_product.items()
+        }
+
+    def getAffiliateCode(self, aff_name):
+        for code, name in self.affiliate_code.items():
+            if name == aff_name:
+                return code
+
     def loadPlatformOutput(self, file_path):
         self.cdc_supply_plan = platform_interface.loadSupplyPlan(file_path, self.affiliate_code, self.horizon, self.week)
     
@@ -97,7 +116,12 @@ class Model:
     def runCDCToAffiliates(self):
         self.pa_cdc.run()
         self.cdc_supply_plan = self.pa_cdc.supply_plan
-        
+    
+    def runWeek(self):
+        self.runAffiliatesToCDC()
+        self.runCDCToFactory()
+        self.runCDCToAffiliates()
+
     def saveSnapShot(self, file_name):
         snap = {
             "supply_plan": self.getNextSupplyPlan(),

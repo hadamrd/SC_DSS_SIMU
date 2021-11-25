@@ -1,5 +1,6 @@
 {
     "horizon": 24,
+    "sales_uncertainty_model_file": "uncertainty_models/UMCPVF_I1.xlsx",
     "affiliate_code": {
         "001": "france",
         "002": "spain",
@@ -32,5 +33,17 @@
         "P3",
         "P4"
     ],
+    "affiliate_product": {
+        "france": ["P1", "P2", "P3", "P4"],
+        "spain": ["P1", "P2"],
+        "chili": ["P1", "P3"],
+        "australia": ["P1", "P2"]
+    },
+    "affiliate_pv_range": {
+        "france": 200,
+        "spain": 200,
+        "chili": 300,
+        "australia": 400
+    },
     "factory_capacity": [1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700]
 }

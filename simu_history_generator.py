@@ -49,4 +49,6 @@ def run():
                 wb["BP"].cell(row=3+w, column=3+t+w).value = prod_demand_history[w][p][t]
                 wb["PDP"].cell(row=3+w, column=3+t+w).value = prod_plan_history[w][p][t]
                 wb["PA"].cell(row=3+w, column=3+t+w).value = supply_plan_history[w][p][t]
+        if not os.path.exists("simu_excel_results"):
+            os.mkdir("simu_excel_results")
         wb.save(f"simu_excel_results/{p}_results.xlsx")

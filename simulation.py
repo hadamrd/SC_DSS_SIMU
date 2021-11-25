@@ -1,12 +1,14 @@
 from os import system
 import os
 from model.model import Model
+from model.sales import Sales
 import simu_history_generator
 import json
 
 
 def simuWithoutPlatform(start_week, end_week):
     model = Model(f"simu_inputs/global_input.json")
+
     for k in range(start_week, end_week+1):
         model.loadWeekInput(f"simu_inputs/input_S{k}.json")
         model.runAffiliatesToCDC()
@@ -27,7 +29,7 @@ def simuWithPlatform(start_week, end_week):
         model.runCDCToAffiliates()
         model.getPlatformInput(f"platform_inputs/input_S{k}.xlsx")
         while not os.path.exists(f"platform_outputs/output_S{k}.xlsx"):
-            input(f"Press any button after putting the platform output_S{k} in platform_outputs folder...")
+            input(f"Press any button after putting the platform output_S{k}.xlsx in platform_outputs folder...")
         model.loadPlatformOutput(f"platform_outputs/output_S{k}.xlsx")
         model.saveCDCSupplyPlan(f"platform_outputs/supply_plan_S{k}.json")
         model.saveSnapShot(f"simu_history/snapshot_S{k}.json")
