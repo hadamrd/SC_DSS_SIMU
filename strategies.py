@@ -54,6 +54,8 @@ if __name__ == "__main__":
     risk_manager.loadRModel("uncertainty_models/UMCRF_I1.xlsx")
     tot = 0
     succ = 0
+    h = risk_manager.horizon
+
     for week in range(2, 20):
 
         print(f"############# gravity for week {week} ##################")
@@ -66,20 +68,20 @@ if __name__ == "__main__":
         demand = model.pa_cdc.getSupplyDemand()
 
         for p in model.products:
-            x = list(utils.accumu(pa[p]))
-            r = list(utils.accumu(reception[p]))
+            x = list(utils.accumu(pa[p]))[:risk_manager.horizon]
+            r = list(utils.accumu(reception[p]))[:risk_manager.horizon]
             d = demand
             s0 = initial_stock[p]
             rpm = risk_manager.getRpm(r, p)
             dpm = risk_manager.getDpm(d, p)
-            nl4p, G = risk_manager.getG(rpm, dpm, s0, x)
+            G = risk_manager.getG(rpm, dpm, s0, x)
             if G > 0.5:
                 tot += 1
-                print(f"G for {p}: ", G)
-                print("initial x sum: ", x[-1])
-                x, G = risk_manager.findSolX(rpm, dpm, s0, x)
-                print("sum after algo: ", x[-1])
-                print("G after algo: ", G)
+                print("input x sum: ", x)
+                x = risk_manager.solveProblem(rpm, dpm, s0, x)
+                G = risk_manager.getG(rpm, dpm, s0, x)
+                print("Output x: ", x)
+                print("G after opti: ", G)
                 if G < 0.5:
                     succ += 1
         model.generateNextWeekInput(f"simu_inputs/input_S{week+1}.json")

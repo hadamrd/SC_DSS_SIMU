@@ -4,6 +4,7 @@ import openpyxl
 from model.model import Model
 import model.utils as utils
 import matplotlib.pyplot as plt
+from cvxopt import solvers, matrix, spdiag, log
 
 class RiskManager:
 
@@ -180,7 +181,8 @@ class RiskManager:
         Returns:
             dict: L4 possibility 
         """
-        l4_possibility = [max(l1p[t], l2p[t]) for t in range(self.horizon)]
+        n = min(len(l1p), len(l2p))
+        l4_possibility = [max(l1p[t], l2p[t]) for t in range(n)]
         return l4_possibility
     
     def getBestDeltaX(self, rpm, dpm, s0, x, t):
@@ -192,28 +194,66 @@ class RiskManager:
             return min(abs(alpha - x[t]), abs(chi - x[t]))
         else:
             return 0
-
     
+    def diffG(self, rpm, dpm, s0, x, t):
+        a1, b1, c1, d1 = rpm["a"][t], rpm["b"][t], rpm["c"][t], rpm["d"][t] 
+        a2, b2, c2, d2 = dpm["a"][t], dpm["b"][t], dpm["c"][t], dpm["d"][t]
+        alpha = min(c1 + s0, c2)
+        chi = max(b1 + s0, b2)
+        beta = min(d1 + s0, d2)
+        gama = max(a1 + s0, a2)
+        if chi < alpha:
+            return 0
+        elif gama > beta:
+            if alpha < x[t] < beta:
+                return 1 / (beta - alpha)
+            elif gama < x[t] < chi:
+                return -1 /(chi - gama)
+            else:
+                return 0
+        elif gama < beta:
+            x_star = (beta * (chi - gama) + gama * (beta - alpha)) / (beta - alpha + chi - gama)
+            if alpha < x[t] < x_star:
+                return 1 / (beta - alpha)
+            elif x_star < x[t] < chi:
+                return -1 /(chi - gama)
+            else:
+                return 0
+        else:
+            return 0
+
     def getG(self, rpm, dpm, s0, x):
         l1p = self.getL1Possibility(rpm, x, s0)
         l2p = self.getL2Possibility(dpm, x)
         l4p = self.getL4Possibility(l1p, l2p)
         nl4p = [1 - _ for _ in l4p]
-        return nl4p, max(nl4p)
+        return max(nl4p)
 
     def findSolX(self, rpm, dpm, s0, x):
         g = 1
         nbiter = 0
         while g > 0.5:
             x =  [x[t] + self.getBestDeltaX(rpm, dpm, s0, x, t) for t in range(self.horizon)]
-            nl4p, g = self.getG(rpm, dpm, s0, x)
+            g = self.getG(rpm, dpm, s0, x)
             nbiter += 1
         return x, g
 
-
-
-
-    
+    def solveProblem(self, rpm, dpm, s0, x_in):
+        n = self.horizon
+        def F(x=None, z=None):
+            if x is None: return 0, matrix(list(map(float, x_in)))
+            if min(x) <= 0.0: return None
+            f = 1.0 * self.getG(rpm, dpm, s0, x)
+            diff = [1.0 * self.diffG(rpm, dpm, s0, x, t) for t in range(n)]
+            Df = matrix(diff).T
+            if z is None: return f, Df
+            H = matrix(0.0, (n,n))
+            return f, Df, H
+        G = matrix([[0.] * i + [1., -1.] + [0.] * (n-2-i) for i in range(n-1)]+ [[0] * (n-1) + [-1.]]).T
+        h = matrix([-10.] * (n-1) + [.0])
+        A = matrix([[0.] * (n-1) + [1.]]).T
+        b = matrix([1. * x_in[-1]])
+        return list(map(round, solvers.cp(F, G=G, h=h, A=A, b=b, options={'show_progress': False})['x']))
 
 
 
