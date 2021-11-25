@@ -55,7 +55,7 @@ if __name__ == "__main__":
     
     for week in range(2, 20):
 
-        print(f"# gravity for week {week}")
+        print(f"############# gravity for week {week} ##################")
         model.loadWeekInput(f"simu_inputs/input_S{week}.json")
         model.runWeek()
 
@@ -72,14 +72,12 @@ if __name__ == "__main__":
             rpm = risk_manager.getRpm(r, p)
             dpm = risk_manager.getDpm(d, p)
             G = risk_manager.getG(rpm, dpm, s0, x)
-            print(f"G for {p}: ", G)
             if G > 0.5:
-                # print("initial x sum: ", x[-1])
+                print(f"G for {p}: ", G)
+                print("initial x sum: ", x[-1])
                 x, G = risk_manager.findSolX(rpm, dpm, s0, x)
-                # print("sum after algo: ", x[-1])
-                # print("G after algo: ", G)
-            
-        
+                print("sum after algo: ", x[-1])
+                print("G after algo: ", G)
         model.generateNextWeekInput(f"simu_inputs/input_S{week+1}.json")
 
 

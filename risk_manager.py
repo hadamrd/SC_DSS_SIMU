@@ -188,34 +188,15 @@ class RiskManager:
         a2, b2, c2, d2 = dpm["a"][t], dpm["b"][t], dpm["c"][t], dpm["d"][t]
         alpha = min(c1, c2)    
         chi = max(b1, b2)
-        if min(d1, d2) < max(a1, a2):
-            beta = min(d1, d2)
-            gama = max(a1, a2)
-            if gama < x[t] <= chi:
-                return 1 / (chi - gama)
-            elif alpha < x[t] <= beta:
-                return - 1 / (beta - alpha)
-            else:
-                return 0
-        elif min(c1, c2) > max(b1, b2):
-            return 0
-        else:
-            beta = max(a1, a2)
-            gama = min(d1, d2)
-            if x[t] < alpha:
-                return 0
-            elif x[t] > chi:
-                return 0
-            elif chi - beta + gama - alpha != 0:
-                x_star = (gama * (chi - beta) + beta * (gama - alpha)) / (chi - beta + gama - alpha)
-                if alpha < x[t] < x_star:
-                    return -1 / (gama - alpha)
-                elif x_star < x[t] < chi:
-                    return 1 / (chi - beta)
-                else:
-                    return 0
-            else:
-                return 0
+        beta = min(d1, d2)
+        gama = max(a1, a2)
+        x_star = x[t]
+        if beta <= gama:
+            x_star = (beta + gama ) / 2
+        elif alpha < chi:
+            x_star = (beta * (chi - gama) + gama * (beta - alpha)) / (chi - gama + beta - alpha)
+        return x[t] - x_star
+
     
     def getG(self, rpm, dpm, s0, x):
         l1p = self.getL1Possibility(rpm, x, s0)
@@ -224,16 +205,15 @@ class RiskManager:
         return 1 - min(l4p)
 
     def findSolX(self, rpm, dpm, s0, x):
-        mu = 0.1
+        mu = 0.01
         lam = 0.5
         sumx_0 = x[-1]
         g = 1
         nbiter = 0
-        while g > 0.5 and nbiter < 100:
+        while g > 0.5 and nbiter < 1000:
             gradNl4 = self.getNL4Gradient(rpm, dpm, x, lam, sumx_0)
-            for t in range(self.horizon):
-                x[t] -= mu * gradNl4[t]
-            lam -= mu * gradNl4[-1]
+            x = [x[t] - mu * gradNl4[t] for t in range(self.horizon)]
+            lam = lam - mu * gradNl4[-1]
             g = self.getG(rpm, dpm, s0, x)
             nbiter += 1
         return x, g
@@ -241,9 +221,8 @@ class RiskManager:
     def getNL4Gradient(self, rpm, dpm, x, lam, sumx_0):
         sum_x = x[-1]
         grad_NL4 = [self.getNL4Derivative(rpm, dpm, x, t) for t in range(self.horizon-1)]
-        grad_NL4 += [self.getNL4Derivative(rpm, dpm, x, self.horizon - 1) + lam]
+        grad_NL4 += [self.getNL4Derivative(rpm, dpm, x, self.horizon-1) + lam]
         grad_NL4 +=  [sum_x - sumx_0]
-        print(grad_NL4)
         return grad_NL4
 
 
