@@ -9,7 +9,7 @@ class PA_CDC:
         self.supply_plan = {a: {p: [None] * model.horizon for p in aff.products} for a, aff in model.affiliates.items()}
         self.product_supply_plan = {p: [None] * model.horizon for p in self.model.products}
     
-    def getProdPlan(self):
+    def getProdPlan(self) -> dict[str, list[int]]:
         if self.model.week % 4 == 1:
             return {p: [0] * self.model.prod_time + self.model.factory.prod_plan[p][:self.model.horizon - self.model.prod_time]\
                 for p in self.model.products}
@@ -17,26 +17,26 @@ class PA_CDC:
             return {p: [0] * self.model.prod_time + self.model.prev_prod_plan[p][self.model.prod_time:]\
                 for p in self.model.products}
     
-    def getPrevSupplyPlan(self):
+    def getPrevSupplyPlan(self) -> dict[str, dict[str, list[int]]]:
         horizon = self.model.horizon
         prev_supply_plan = {}
         for a, aff in self.model.affiliates.items():
             prev_supply_plan[a] = {p: self.model.prev_supply_plan[a][p][aff.delivery_time:] + [0] * (horizon-aff.delivery_time) for p in aff.products}
         return prev_supply_plan
 
-    def getProductSupplyDemand(self):
+    def getProductSupplyDemand(self) -> dict[str, list[int]]:
         return self.model.cbn_cdc.getProductSupplyDemand()
     
-    def getTotalPrevSupplyPlan(self):
+    def getTotalPrevSupplyPlan(self) -> dict[str, list[int]]:
         horizon = self.model.horizon
         return {p: [sum([self.prev_supply_plan[a][p][t] for a, aff in self.model.affiliates.items() if p in aff.products])
                 for t in range(horizon)]
                     for p in self.model.products}
     
-    def getSupplyDemand(self):
+    def getSupplyDemand(self) -> dict[str, dict[str, list[int]]]:
         return self.model.cbn_cdc.getSupplyDemand()
     
-    def getQueuedProd(self):
+    def getQueuedProd(self) -> dict[str, list[int]]:
         return self.model.cbn_cdc.getQueuedProd()
         
     def run(self):

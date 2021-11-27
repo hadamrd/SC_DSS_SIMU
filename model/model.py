@@ -49,8 +49,8 @@ class Model:
         initial_stock = {}
         for a, aff in self.affiliates.items():
             initial_stock[a] = {
-                p: aff.initial_stock[p] + aff.imminent_supply[p][0] + (self.cdc_supply_plan[a][p][0] if aff.delivery_time==0 else 0)\
-                    - aff.sales_forcast[p][0] 
+                p: aff.initial_stock[p] + aff.imminent_supply[p][0] +\
+                    (self.cdc_supply_plan[a][p][0] if aff.delivery_time==0 else 0) - aff.sales_forcast[p][0] 
                 for p in aff.products
             } 
         initial_stock["cdc"]= {}
@@ -122,7 +122,7 @@ class Model:
         self.runCDCToFactory()
         self.runCDCToAffiliates()
 
-    def saveCurrState(self, file_name):
+    def getCurrState(self):
         pa = self.pa_cdc.product_supply_plan
         initial_stock = self.pa_cdc.initial_stock
         reception = self.getCDCReception()
@@ -133,8 +133,11 @@ class Model:
             "demand": demand,
             "initial_stock": initial_stock
         }
+        return snap
+
+    def saveCurrState(self, file_name):
         with open(file_name, 'w') as fp:
-            json.dump(snap, fp)
+            json.dump(self.getCurrState, fp)
 
     def saveSnapShot(self, file_name):
         snap = {

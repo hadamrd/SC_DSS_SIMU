@@ -65,7 +65,7 @@ class SmoothFilter:
                     res[a][p][t] = x[p][t] * daffpm[a][p]["b"][t] / tot_dem if tot_dem != 0 else 0
         return res
 
-    def run(self, risk_manager: RiskManager, data):
+    def run(self, risk_manager: RiskManager, data) -> dict[str, dict[str, list[int]]]:
         pa = data["pa"]
         reception = data["reception"]
         demand = data["demand"]
@@ -85,9 +85,9 @@ class SmoothFilter:
             self.validateOutput(x_in, x_out[product])
         return self.dispatch(risk_manager, x_out)
 
-        
 
 
 if __name__ == "__main__":
     pass
+
 
