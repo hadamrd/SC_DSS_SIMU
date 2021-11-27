@@ -1,9 +1,7 @@
-from io import RawIOBase
 import json
 from risk_manager import RiskManager
 from model.model import Model
 from model import utils
-from cvxopt import solvers, matrix
 
 def validateSolution(x_in, x_out):
     n = len(x_out)
