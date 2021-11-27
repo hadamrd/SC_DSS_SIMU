@@ -13,6 +13,8 @@ def simuWithoutPlatform(start_week, end_week, inputs_folder, history_folder):
         model.runAffiliatesToCDC()
         model.runCDCToFactory()
         model.runCDCToAffiliates()
+        if not os.path.exists(history_folder):
+            os.mkdir(history_folder)
         model.saveSnapShot(os.path.join(history_folder, f"snapshot_S{k}.json"))
         model.generateNextWeekInput(os.path.join(inputs_folder, f"input_S{k+1}.json"))
     
@@ -35,9 +37,12 @@ def simuWithPlatform(start_week, end_week):
         model.generateNextWeekInput(f"simu_inputs/input_S{k+1}.json")
 
 def simuWithAutomatedStrat(start_week, end_week):
-    sales_forcast_folder = "without_platform_inputs"
+    sales_forcast_folder = "inputs_without_plateforme"
     history_folder = "with_strat_history"
     inputs_folder = "with_strat_inputs"
+    
+    if not os.path.exists(inputs_folder):
+        os.mkdir(inputs_folder)
     
     model = Model(f"simu_inputs/global_input.json")
     n = model.horizon - 4
@@ -60,18 +65,28 @@ def simuWithAutomatedStrat(start_week, end_week):
         model.generateNextWeekInput(f"{inputs_folder}/input_S{k+1}.json")
 
 if __name__ == "__main__":
-    history_folder = "simu_history"
+    history_folder = "history_without_plateforme"
+    inputs_folder= "inputs_without_plateforme"
     start_week = 2
     end_week = 40
 
-    # simuWithoutPlatform(start_week, end_week, "old_inputs", history_folder)
+    # simuWithoutPlatform(start_week, end_week, inputs_folder, history_folder)
+    
     # history.generate(history_folder="simu_history",
     #                 results_folder="simu_excel_results",
     #                 template_file="templates/template_simu_result.xlsx")
 
     # simuWithPlatform(start_week, end_week)
 
-    simuWithAutomatedStrat(start_week, end_week)
+    # simuWithAutomatedStrat(start_week, end_week)
+
+    history.generate(history_folder="with_strat_history",
+                results_folder="with_strat_excel_results",
+                template_file="templates/template_simu_result.xlsx")
+
+    # history.generate(history_folder="history_without_plateforme",
+    #             results_folder="without_plateforme_excel_results",
+    #             template_file="templates/template_simu_result.xlsx")
 
     
 

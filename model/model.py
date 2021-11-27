@@ -26,7 +26,6 @@ class Model:
         cdc_prod_plan = self.pa_cdc.getProdPlan()
         cdc_queued_prod = self.pa_cdc.getQueuedProd()
         return {p: [cdc_prod_plan[p][t] + cdc_queued_prod[p][t] for t in range(self.horizon)] for p in self.products}
-        
 
     def loadWeekInput(self, input_file):
         with open(input_file) as json_file:
@@ -49,7 +48,7 @@ class Model:
         initial_stock = {}
         for a, aff in self.affiliates.items():
             initial_stock[a] = {
-                p: aff.initial_stock[p] + aff.imminent_supply[p][0] +\
+                p: aff.initial_stock[p] + self.prev_supply_plan[a][p][0] +\
                     (self.cdc_supply_plan[a][p][0] if aff.delivery_time==0 else 0) - aff.sales_forcast[p][0] 
                 for p in aff.products
             } 

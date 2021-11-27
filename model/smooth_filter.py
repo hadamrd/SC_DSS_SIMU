@@ -27,7 +27,9 @@ class SmoothFilter:
         to_solve = set([i for i in range(self.fix_hor, n-1) if l4n_in[i] >= self.alpha])
         unsolvable = set()
         solved = set()
-        while solved | unsolvable != to_solve:
+        n_iter = 0
+        max_iter = 200
+        while solved | unsolvable != to_solve and n_iter < max_iter:
             for t in to_solve - unsolvable:
                 if l4n[t] < self.alpha:
                     continue
@@ -53,6 +55,7 @@ class SmoothFilter:
                         x[t] = min(x_star, x[t+1])
             l4n = risk_m.getL4Necessity(rpm, dpm, x, s0)
             solved = set([i for i in range(n) if l4n[i] < self.alpha <= l4n_in[i]])
+            n_iter += 1
         return x
 
     def dispatch(self, risk_m: RiskManager, x: dict):

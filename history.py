@@ -45,4 +45,4 @@ def generate(history_folder, results_folder, template_file):
                 wb["PA"].cell(row=3+w, column=3+t+w).value = supply_plan_history[w][p][t]
         if not os.path.exists(results_folder):
             os.mkdir(results_folder)
-        wb.save(os.path.join(results_folder, "{p}_results.xlsx"))
+        wb.save(os.path.join(results_folder, f"{p}_results.xlsx"))
