@@ -3,14 +3,7 @@ import json
 import os
 import re 
 
-def sumOverAffiliates(quantity, affiliates, products, horizon):
-    return {
-            p: [
-                sum([quantity[a][p][t] for a in affiliates if p in quantity[a]]) for t in range(horizon)
-            ] for p in products
-        }
-    
-def generate(history_folder, results_folder, template_file):
+def generate(prefix, history_folder, results_folder, template_file):
     with open(f"simu_inputs/global_input.json") as fp:
         data = json.load(fp)
     products = data["products"]
@@ -54,7 +47,7 @@ def generate(history_folder, results_folder, template_file):
                 wb["BP"].cell(row=3+w, column=3+t+w).value = prod_demand_history[w][p][t]
                 wb["PDP"].cell(row=3+w, column=3+t+w).value = prod_plan_history[w][p][t]
                 wb["PA"].cell(row=3+w, column=3+t+w).value = sum([supply_plan_history[w][a][p][t] for a in affiliates if p in data["affiliate_product"][a]])
-        wb.save(os.path.join(results_folder, f"{p}_results.xlsx"))
+        wb.save(os.path.join(results_folder, f"{prefix}_{p}_results.xlsx"))
 
     wb = openpyxl.load_workbook(template_file)
     wb.remove_sheet(wb["PDP"])
@@ -66,7 +59,7 @@ def generate(history_folder, results_folder, template_file):
                      wb["PV"].cell(row=3+w, column=3+t+w).value = product_sales_history[w][a][p][t]
                      wb["BA"].cell(row=3+w, column=3+t+w).value = supply_demand_history[w][a][p][t]
                      wb["PA"].cell(row=3+w, column=3+t+w).value = supply_plan_history[w][a][p][t]
-            wb.save(os.path.join(results_folder, f"{a}_{p}_results.xlsx"))
+            wb.save(os.path.join(results_folder, f"{prefix}_{a}_{p}_results.xlsx"))
 
 
 

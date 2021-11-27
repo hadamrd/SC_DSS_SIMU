@@ -1,7 +1,6 @@
 input_S*.json
 output_S*.json
-P*_results.xlsx
 snapshot_S*.json
 state_S*.json
-
+*_results.xlsx
 *.pyc
