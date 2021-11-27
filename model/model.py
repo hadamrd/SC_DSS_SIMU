@@ -127,13 +127,13 @@ class Model:
         initial_stock = self.pa_cdc.initial_stock
         reception = self.getCDCReception()
         demand = self.pa_cdc.getSupplyDemand()
-        snap = {
+        state = {
             "pa": pa,
             "reception": reception,
             "demand": demand,
             "initial_stock": initial_stock
         }
-        return snap
+        return state
 
     def saveCurrState(self, file_name):
         with open(file_name, 'w') as fp:
@@ -144,7 +144,8 @@ class Model:
             "supply_plan": self.getNextSupplyPlan(),
             "prod_plan": self.getNextProdPlan(),
             "supply_demand": self.getAffiliateSupplyDemand(),
-            "prod_demand": self.getCDCProdDemand()
+            "prod_demand": self.getCDCProdDemand(),
+            "sales_forcast": self.sales_forcast,
         }
         with open(file_name, 'w') as fp:
             json.dump(snap, fp)

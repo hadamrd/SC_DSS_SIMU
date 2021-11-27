@@ -65,7 +65,8 @@ class SmoothFilter:
                     res[a][p][t] = x[p][t] * daffpm[a][p]["b"][t] / tot_dem if tot_dem != 0 else 0
         return res
 
-    def run(self, risk_manager: RiskManager, data) -> dict[str, dict[str, list[int]]]:
+    def run(self, risk_manager: RiskManager, model: Model) -> dict[str, dict[str, list[int]]]:
+        data = model.getCurrState()
         pa = data["pa"]
         reception = data["reception"]
         demand = data["demand"]

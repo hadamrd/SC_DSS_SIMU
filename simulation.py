@@ -1,22 +1,20 @@
-from os import system
 import os
+import history
+import json
 from model.model import Model
-import simu_history_generator
 from model.smooth_filter import SmoothFilter
 from model.risk_manager import RiskManager
-import json
 
 
-def simuWithoutPlatform(start_week, end_week):
+def simuWithoutPlatform(start_week, end_week, inputs_folder, history_folder):
     model = Model(f"simu_inputs/global_input.json")
-
     for k in range(start_week, end_week+1):
-        model.loadWeekInput(f"simu_inputs/input_S{k}.json")
+        model.loadWeekInput(os.path.join(inputs_folder, f"input_S{k}.json"))
         model.runAffiliatesToCDC()
         model.runCDCToFactory()
         model.runCDCToAffiliates()
-        model.saveSnapShot(f"simu_history/snapshot_S{k}.json")
-        model.generateNextWeekInput(f"simu_inputs/input_S{k+1}.json")
+        model.saveSnapShot(os.path.join(history_folder, f"snapshot_S{k}.json"))
+        model.generateNextWeekInput(os.path.join(inputs_folder, f"input_S{k+1}.json"))
     
 def simuWithPlatform(start_week, end_week):
     model = Model(f"simu_inputs/global_input.json")
@@ -37,33 +35,43 @@ def simuWithPlatform(start_week, end_week):
         model.generateNextWeekInput(f"simu_inputs/input_S{k+1}.json")
 
 def simuWithAutomatedStrat(start_week, end_week):
+    sales_forcast_folder = "without_platform_inputs"
+    history_folder = "with_strat_history"
+    inputs_folder = "with_strat_inputs"
+    
     model = Model(f"simu_inputs/global_input.json")
     n = model.horizon - 4
     risk_manager = RiskManager(n)
     risk_manager.loadDModel(model, "uncertainty_models/UMCDF_I2.xlsx")
     risk_manager.loadRModel(model, "uncertainty_models/UMCRF_I1.xlsx")
     filter = SmoothFilter(alpha=0.5, fixed_horizon=2)
-
     for k in range(start_week, end_week+1):
-        model.loadWeekInput(f"simu_inputs/input_S{k}.json")
-        with open(f"old_inputs/input_S{k}.json") as fp:
+        model.loadWeekInput(f"{inputs_folder}/input_S{k}.json")
+        with open(f"{sales_forcast_folder}/input_S{k}.json") as fp:
             old_input = json.load(fp)
-
         model.sales_forcast = old_input["sales_forcast"]
         model.runAffiliatesToCDC()
         model.runCDCToFactory()
         model.runCDCToAffiliates()
-        model = Model("simu_inputs/global_input.json")
-        
-        model.pa_cdc.supply_plan = filter.run(risk_manager, model.getCurrState())
-        model.saveSnapShot(f"simu_history/snapshot_S{k}.json")
-        model.generateNextWeekInput(f"simu_inputs/input_S{k+1}.json")
-        
+        model.pa_cdc.supply_plan = filter.run(risk_manager, model)
+        if not os.path.exists(history_folder):
+            os.mkdir(history_folder)
+        model.saveSnapShot(f"{history_folder}/snapshot_S{k}.json")
+        model.generateNextWeekInput(f"{inputs_folder}/input_S{k+1}.json")
+
 if __name__ == "__main__":
+    history_folder = "simu_history"
     start_week = 2
     end_week = 40
-    #simuWithPlatform(start_week, end_week)
-    simuWithoutPlatform(start_week, end_week)
-    #simu_history_generator.run()
+
+    # simuWithoutPlatform(start_week, end_week, "old_inputs", history_folder)
+    # history.generate(history_folder="simu_history",
+    #                 results_folder="simu_excel_results",
+    #                 template_file="templates/template_simu_result.xlsx")
+
+    # simuWithPlatform(start_week, end_week)
+
+    simuWithAutomatedStrat(start_week, end_week)
+
     
 
