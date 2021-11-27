@@ -23,7 +23,7 @@ def solveProblem(risk_m: RiskManager, rpm, dpm, s0, x_in):
             x_out[t] = rpm["c"][t] + s0
     return x_out
 
-def applyReduceGraviteStrat(risk_manager: RiskManager, week, product, data):
+def applyReduceGraviteStrat(risk_manager: RiskManager, product, data):
     pa = data["pa"]
     reception = data["reception"]
     demand = data["demand"]
@@ -90,7 +90,7 @@ def main():
             data = json.load(fp)
         for product in model.products:
             print(f"################# Processing week {week}, product {product} ###################################")
-            x_in, x_out, l4n_in, l4n_out, G_in, G_out, solvable = applyReduceGraviteStrat(risk_manager, week, product, data)
+            x_in, x_out, l4n_in, l4n_out, G_in, G_out, solvable = applyReduceGraviteStrat(risk_manager, product, data)
             print("x_in: ", x_in)
             print("l4n_in: ", l4n_in)
             print("---------------------------------------------------------")
