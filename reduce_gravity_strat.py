@@ -15,12 +15,13 @@ def validateSolution(x_in, x_out):
 
 def solveProblem(risk_m: RiskManager, rpm, dpm, s0, x_in):
     n = risk_m.horizon
+    x_out = x_in.copy()
     for t in range(n-1):
-        if x_in[t] < dpm["b"][t]:
-            x_in[t] = dpm["b"][t]
-        elif x_in[t] > rpm["c"][t] + s0:
-            x_in[t] = rpm["c"][t] + s0
-    return x_in
+        if x_out[t] < dpm["b"][t]:
+            x_out[t] = dpm["b"][t]
+        elif x_out[t] > rpm["c"][t] + s0:
+            x_out[t] = rpm["c"][t] + s0
+    return x_out
 
 def applyReduceGraviteStrat(risk_manager: RiskManager, week, product, data):
     pa = data["pa"]
@@ -43,22 +44,24 @@ def applyReduceGraviteStrat(risk_manager: RiskManager, week, product, data):
     l4n_in = risk_manager.getL4Necessity(rpm, dpm, x_in, s0)
     G_in = max(l4n_in)
     G_out = G_in
+    x_out = x_in
+    l4n_out = l4n_in
+    solvable = True
 
     if l4n_in[n-1] > 0.5:
-        print(f"for week {week}, product {product}, L4 necessity of total Q is is {l4n_in[n-1]}, cannot reduce G")
-        return G_in, G_out, False
+        # print(f"for week {week}, product {product}, L4 necessity of total Q is is {l4n_in[n-1]}, cannot reduce G")
+        solvable = False
 
     for t in range(n):
         if rpm["d"][t] + s0 < dpm["a"][t]:
-            print(f"for week {week}, product {product}, possible demand exceeds possible reception + stock at periot {t}!")
-            return G_in, G_out, False
+            # print(f"for week {week}, product {product}, possible demand exceeds possible reception + stock at periot {t}!")
+            solvable = False
 
-    if G_in > 0.5:
+    if solvable and G_in > 0.5:
         x_out = solveProblem(risk_manager, rpm, dpm, s0, x_in)
         l4n_out = risk_manager.getL4Necessity(rpm, dpm, x_out, s0)
         G_out = max(l4n_out)
         if G_out > 0.5:
-            print(f"################# Processing week {week}, product {product} ###################################")
             print("Couldn't solve the seemingly solvable problem : ")
             print("max(d_A): ", max(dpm["a"]), ", max(d_B): ", max(dpm["b"]), ", total(x): ", x_in[-1], ", min(r_A) + s0: ", min(rpm["a"]) + s0)
             print("Input X : ", x_in)
@@ -70,7 +73,8 @@ def applyReduceGraviteStrat(risk_manager: RiskManager, week, product, data):
             print("Output L4_necessity : ", l4n_out)
             print("Output G : ", G_out)
         validateSolution(x_in, x_out)
-    return G_in, G_out, True
+
+    return x_in, x_out, l4n_in, l4n_out, G_in, G_out, solvable
 
 
 def main():
@@ -84,15 +88,21 @@ def main():
     for week in range(2, 20):
         with open(f"simu_history/state_S{week}.json") as fp:
             data = json.load(fp)
-        for p in model.products:
-            G_in, G_out, solvable = applyReduceGraviteStrat(risk_manager, week, p, data)  
+        for product in model.products:
+            print(f"################# Processing week {week}, product {product} ###################################")
+            x_in, x_out, l4n_in, l4n_out, G_in, G_out, solvable = applyReduceGraviteStrat(risk_manager, week, product, data)
+            print("x_in: ", x_in)
+            print("l4n_in: ", l4n_in)
+            print("---------------------------------------------------------")
+            print("x_out: ", x_out)
+            print("l4n_out: ", l4n_out)
             if G_in > 0.5:
                 tot += 1
                 if G_out < 0.5:
                     solved += 1
             if not solvable:
                 unsolvable += 1
-    print("################           Finished     ##############################")
+    print("################           Finished       ##############################")
     print(f"performance score : {100 * solved / (tot - unsolvable)}%")
 
 
