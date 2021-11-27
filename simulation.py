@@ -1,8 +1,8 @@
 from os import system
 import os
 from model.model import Model
-from model.sales import Sales
 import simu_history_generator
+from model.smooth_filter import SmoothFilter
 import json
 
 

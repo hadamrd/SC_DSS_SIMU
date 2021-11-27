@@ -7,20 +7,19 @@ import model.utils as utils
 
 class RiskManager:
 
-    def __init__(self, model: Model) -> None:
-        self.model = model
-        self.horizon = self.model.horizon - 4
+    def __init__(self, horizon) -> None:
+        self.horizon = horizon
 
-    def loadDModel(self, file_name: str):
-        self.d_aff_model = {a: {p: {} for p in aff_products} for a, aff_products in self.model.affiliate_product.items()}
-        self.d_model = {p: {} for p in self.model.products}
+    def loadDModel(self, model: Model, file_name: str):
+        self.d_aff_model = {a: {p: {} for p in aff_products} for a, aff_products in model.affiliate_product.items()}
+        self.d_model = {p: {} for p in model.products}
         wb = openpyxl.load_workbook(file_name)
         sh = wb.active
         r = 2
         while sh.cell(r, 1).value:
             product = sh.cell(r, 1).value
             aff_code = sh.cell(r, 2).value
-            aff = self.model.affiliate_code[aff_code]
+            aff = model.affiliate_code[aff_code]
             param = sh.cell(r, 4).value
             if param == "RefWeek":
                 quantity = utils.readRefWeekRow(sh, r, 5, self.horizon)
@@ -46,7 +45,7 @@ class RiskManager:
                         dist[param][t] += Q[t] + alpha_t * F_t
         return dist
         
-    def loadRModel(self, file_name: str) -> None:
+    def loadRModel(self, model: Model, file_name: str) -> None:
         wb = openpyxl.load_workbook(file_name)
         sh = wb.active
         params = ["a", "b", "c", "d", "model_type", "ref_week"]
@@ -54,7 +53,7 @@ class RiskManager:
             param: utils.readSubRow(sh, 2 + j + len(params) * k, 5, self.horizon) if param != "ref_week" else 
             utils.readRefWeekRow(sh, 2 + j + len(params) * k, 5, self.horizon) 
             for j, param in enumerate(params)
-        } for k, p in enumerate(self.model.products) }
+        } for k, p in enumerate(model.products) }
     
     def getRpm(self, r:dict, p: str) -> dict:
         params = ["a", "b", "c", "d"]
@@ -75,17 +74,27 @@ class RiskManager:
     def l1p(self, a, b, s0, x):
         return utils.affineY(a + s0, b + s0, x)
     
+    @staticmethod
+    def _l4n(c, d, a, b, x):
+        if a > d:
+            return 1
+        if x == c or x == b:
+            return 0
+        elif c >= b:
+            return utils.affineY(c, d, x) + 1 - utils.affineY(a, b, x)
+        elif c < b:
+            x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
+            if x <= x_star :
+                return 1 - utils.affineY(a, b, x)
+            elif x > x_star:
+                return utils.affineY(c, d, x)
+
     def l4n(self, rpm, dpm, s0, x, t):
-        cR, dR = rpm["c"][t] + s0, rpm["d"][t] + s0 
-        aD, bD = dpm["a"][t], dpm["b"][t]
-        return utils.l4n(cR, dR, aD, bD, x[t])
+        c, d = rpm["c"][t] + s0, rpm["d"][t] + s0 
+        a, b = dpm["a"][t], dpm["b"][t]
+        return self._l4n(c, d, a, b, x[t])
 
-    def l4nDiff(self, rpm, dpm, s0, x, t):
-        cR, dR = rpm["c"][t] + s0, rpm["d"][t] + s0 
-        aD, bD = dpm["a"][t], dpm["b"][t]
-        return utils.l4nDiff(cR, dR, aD, bD, x[t])
-
-    def l2p(self, c, d, x):
+    def _l2p(self, c, d, x):
         return 1 - utils.affineY(d, c, x)
 
     def getL1Possibility(self, rpm: dict, x: dict, s0: dict) -> dict:
@@ -93,7 +102,7 @@ class RiskManager:
         return l1_possibility
 
     def getL2Possibility(self, dpm: dict, x: dict) -> dict:
-        l2_possibility = [self.l2p(dpm["c"][t], dpm["d"][t], x[t]) for t in range(self.horizon)]
+        l2_possibility = [self._l2p(dpm["c"][t], dpm["d"][t], x[t]) for t in range(self.horizon)]
         return l2_possibility
 
     def getL4Possibility(self, l1p: dict, l2p: dict) -> dict:
