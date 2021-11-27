@@ -41,9 +41,10 @@ def readRefWeekRow(sheet, row, start_col, horizon):
 def l4n(cR, dR, aD, bD, x):
     if aD > dR:
         return 1
+    if x == cR or x == bD:
+        return 0
     elif cR >= bD:
-        necessity = affineY(cR, dR, x) + 1 - affineY(aD, bD, x)
-        return necessity
+        return affineY(cR, dR, x) + 1 - affineY(aD, bD, x)
     elif cR < bD:
         x_star = ((bD - aD) * cR + bD * (dR - cR)) / (bD - aD + dR - cR)
         if x <= x_star :
@@ -160,3 +161,28 @@ if __name__ == "__main__":
 
 # def sumOverAffiliate(self, q, p, param):
 #     return [sum([q[a][p][param][t] for a in q if p in q[a]]) for t in range(self.horizon)]
+
+# l4n = [risk_m.l4n(rpm, dpm, s0, x_in, t) for t in range(n)]
+# f_in = sum(l4n)
+# def F(x=None, z=None):
+#     if x is None: return 0, matrix(list(map(float, x_in[:n])))
+#     if min(x) < 0.0: return None
+#     if not all(rpm["d"][t] + s0 < dpm["a"][t] or dpm["a"][t] <= x[t] <= rpm["d"][t] + s0 for t in range(n-1)): return None
+#     l4n = [risk_m.l4n(rpm, dpm, s0, x, t) for t in range(n)] # N1, N2, ... ,Nn
+#     f = 1. * sum(l4n)
+#     gradient = [1. * risk_m.l4nDiff(rpm, dpm, s0, x, t) for t in range(n)] # diffN1, diffN2, ... ,diffNn
+#     Df = matrix(gradient).T
+#     if z is None: return f, Df
+#     H = matrix(0.1, (n,n)) # On
+#     return f, Df, H
+# G = matrix([[0.] * i + [1., -1.] + [0.] * (n-2-i) for i in range(n-1)] + [[0] * (n-1) + [-1.]]).T # x(t) - x(t+1) <= 0
+# h = matrix(0., (n, 1))
+# A = matrix([0.] * (n-1) + [1.]).T
+# b = matrix([1. * x_in[-1]])
+# options = {'show_progress': False}
+# solutions = solvers.cp(F, G=G, h=h, A=A, b=b, options=options)
+# l4n = [risk_m.l4n(rpm, dpm, s0, x_in, t) for t in range(n)]
+# f_out = sum(l4n)
+# if f_out < f_in:
+#     raise Exception("Opti did something: ", f_in - f_out)
+# return list(map(round, solutions['x']))
