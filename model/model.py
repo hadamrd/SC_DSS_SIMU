@@ -122,6 +122,20 @@ class Model:
         self.runCDCToFactory()
         self.runCDCToAffiliates()
 
+    def saveCurrState(self, file_name):
+        pa = self.pa_cdc.product_supply_plan
+        initial_stock = self.pa_cdc.initial_stock
+        reception = self.getCDCReception()
+        demand = self.pa_cdc.getSupplyDemand()
+        snap = {
+            "pa": pa,
+            "reception": reception,
+            "demand": demand,
+            "initial_stock": initial_stock
+        }
+        with open(file_name, 'w') as fp:
+            json.dump(snap, fp)
+
     def saveSnapShot(self, file_name):
         snap = {
             "supply_plan": self.getNextSupplyPlan(),

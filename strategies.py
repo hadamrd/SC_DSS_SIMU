@@ -1,91 +1,84 @@
+from io import RawIOBase
+import json
 from risk_manager import RiskManager
 from model.model import Model
 from model import utils
-import matplotlib.pyplot as plt
+from cvxopt import solvers, matrix
 
-def test_plot():
-    model = Model("simu_inputs/global_input.json")
-    risk_manager = RiskManager(model)
-    risk_manager.loadDModel("uncertainty_models/UMCDF_I2.xlsx")
-    risk_manager.loadRModel("uncertainty_models/UMCRF_I1.xlsx")
+def solveProblem(risk_m: RiskManager, rpm, dpm, s0, x_in):
+    n = risk_m.horizon
+    def F(x=None, z=None):
+        if x is None: return 0, matrix(1., (n,1))
+        if min(x) < 0.0 or max(x) > x_in[-1]: return None
+        l4n = risk_m.getL4Necessity(rpm, dpm, x, s0) # N1, N2, ... ,Nn
+        f = sum(l4n)
+        gradient = [1.0 * risk_m.l4nDiff(rpm, dpm, s0, x, t) for t in range(n)] # diffN1, diffN2, ... ,diffNn
+        print(gradient)
+        Df = matrix(gradient).T
+        if z is None: return f, Df
+        H = matrix(0.0, (n,n)) # On
+        return f, Df, H
+    G = matrix([[0.] * i + [1., -1.] + [0.] * (n-2-i) for i in range(n-1)] + [[0] * (n-1) + [-1.]]).T # x(t) - x(t+1) <= 0
+    h = matrix(-10., (n, 1))
+    A = matrix([[0.] * (n-1) + [1.]]).T
+    b = matrix([1. * x_in[-1]])
+    options = {'show_progress': False}
+    solutions = solvers.cp(F, G=G, h=h, A=A, b=b, options=options)
+    return list(map(round, solutions['x']))
+
+def applyStrat(risk_manager: RiskManager, week, product):
+    print(f"############# Processing week {week} ##################")
+    with open(f"simu_history/state_S{week}.json") as fp:
+        data = json.load(fp)
+    pa = data["pa"]
+    reception = data["reception"]
+    demand = data["demand"]
+    initial_stock = data["initial_stock"]
+
+    n = risk_manager.horizon
+    x = list(utils.accumu(pa[product]))[:risk_manager.horizon]
+    r = list(utils.accumu(reception[product]))[:risk_manager.horizon]
+    d = demand
+    s0 = initial_stock[product]
+
+    rpm = risk_manager.getRpm(r, product)
+    dpm = risk_manager.getDpm(d, product)
+    print("max demand B: ", max(dpm["b"]), "total pa = ", x[-1], "diff = ", x[-1] - max(dpm["b"]))
     
-    week = 3
-    print(f"# gravity for week {week}")
-    model.loadWeekInput(f"simu_inputs/input_S{week}.json")
-    model.runWeek()
+    # l4n = risk_manager.getL4Necessity(rpm, dpm, x, s0)
+    # print(l4n)
+    # raise
 
-    pa = model.pa_cdc.product_supply_plan
-    initial_stock = model.pa_cdc.initial_stock
-    reception = model.getCDCReception()
-    demand = model.pa_cdc.getProductSupplyDemand()
+    G_in = risk_manager.getG(rpm, dpm, s0, x)
+    G_out = G_in
+    print(f"Gravity of {product} at week {week} is : ", G_in)
+    if G_in > 0.5:
+        l4n = risk_manager.getL4Necessity(rpm, dpm, x, s0)
+        print("Input x: ", x)
+        print("L4 necessity(xt): ", l4n)
+        l4n_of_total = l4n[n-1]
+        if l4n_of_total > 0.5:
+            print(f"L4 necessity of total quantity is > {l4n_of_total}, cannot reduce G")
+        else:
+            print("Trying to reduce gravity for product: ", product)
+            x = solveProblem(risk_manager, rpm, dpm, s0, x)
+            G_out = risk_manager.getG(rpm, dpm, s0, x)
+            l4n = risk_manager.getL4Necessity(rpm, dpm, x, s0)
+            print("Output x: ", x)
+            print("output L4 necessity(xt): ", l4n)
+            print("G after strat: ", G_out)
+    return G_in, G_out
 
-    p = "P3"
 
-    x = list(utils.accumu(pa[p]))
-    r = list(utils.accumu(reception[p]))
-    d = list(utils.accumu(demand[p]))
-    s0 = initial_stock[p]
-    rpm = risk_manager.getPossibilityDistParams(r, risk_manager.r_model[p])
-    dpm = risk_manager.getPossibilityDistParams(d, risk_manager.d_model[p])
-
-    ax, y = risk_manager.sampleL1Possibility(rpm, s0, 3, 100)
-    plt.plot(ax, y, 'b')
-
-    ax, y = risk_manager.sampleL2Possibility(dpm, 3, 100)
-    plt.plot(ax, y, 'g')
-
-    ax, y = risk_manager.sampleL4Possibility(rpm, dpm, s0, 3, 100)
-    plt.plot(ax, y, 'r')
-
-    plt.show()
-
-    l1p = risk_manager.getL1Possibility(rpm, x, s0)
-    l2p = risk_manager.getL2Possibility(dpm, x)
-    l4p = risk_manager.getL4Possibility(l1p, l2p)
-    l4n = [1 - l for l in l4p]
-    G = max(l4n)
-    print(p, ", L4 Nec: ", l4n, ", G: ", G)
-
-if __name__ == "__main__":
-
+def main():
     model = Model("simu_inputs/global_input.json")
     risk_manager = RiskManager(model)
     risk_manager.loadDModel("uncertainty_models/UMCDF_I2.xlsx")
     risk_manager.loadRModel("uncertainty_models/UMCRF_I1.xlsx")
-    tot = 0
-    succ = 0
-    h = risk_manager.horizon
+    week = 5
+    G_in, G_out = applyStrat(risk_manager, week, "P3")
+if __name__ == "__main__":
+    main()
 
-    for week in range(2, 20):
-
-        print(f"############# gravity for week {week} ##################")
-        model.loadWeekInput(f"simu_inputs/input_S{week}.json")
-        model.runWeek()
-
-        pa = model.pa_cdc.product_supply_plan
-        initial_stock = model.pa_cdc.initial_stock
-        reception = model.getCDCReception()
-        demand = model.pa_cdc.getSupplyDemand()
-
-        for p in model.products:
-            x = list(utils.accumu(pa[p]))[:risk_manager.horizon]
-            r = list(utils.accumu(reception[p]))[:risk_manager.horizon]
-            d = demand
-            s0 = initial_stock[p]
-            rpm = risk_manager.getRpm(r, p)
-            dpm = risk_manager.getDpm(d, p)
-            G = risk_manager.getG(rpm, dpm, s0, x)
-            if G > 0.5:
-                tot += 1
-                print("input x sum: ", x)
-                x = risk_manager.solveProblem(rpm, dpm, s0, x)
-                G = risk_manager.getG(rpm, dpm, s0, x)
-                print("Output x: ", x)
-                print("G after opti: ", G)
-                if G < 0.5:
-                    succ += 1
-        model.generateNextWeekInput(f"simu_inputs/input_S{week+1}.json")
-
-    print("success rate: ", 100* succ/tot, "%")
 
 

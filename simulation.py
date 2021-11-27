@@ -14,7 +14,8 @@ def simuWithoutPlatform(start_week, end_week):
         model.runAffiliatesToCDC()
         model.runCDCToFactory()
         model.runCDCToAffiliates()
-        model.saveSnapShot(f"simu_history/snapshot_S{k}.json")
+        # model.saveSnapShot(f"simu_history/snapshot_S{k}.json")
+        model.saveCurrState(f"simu_history/state_S{k}.json")
         model.generateNextWeekInput(f"simu_inputs/input_S{k+1}.json")
     
 def simuWithPlatform(start_week, end_week):
@@ -40,5 +41,5 @@ if __name__ == "__main__":
     end_week = 40
     #simuWithPlatform(start_week, end_week)
     simuWithoutPlatform(start_week, end_week)
-    simu_history_generator.run()
+    #simu_history_generator.run()
 
