@@ -1,5 +1,5 @@
 import json
-from risk_manager import RiskManager
+from model.risk_manager import RiskManager
 from model.model import Model
 from model import utils
 
@@ -22,7 +22,7 @@ def solveProblem(risk_m: RiskManager, rpm, dpm, s0, x_in):
             x_in[t] = rpm["c"][t] + s0
     return x_in
 
-def applyStrat(risk_manager: RiskManager, week, product, data):
+def applyReduceGraviteStrat(risk_manager: RiskManager, week, product, data):
     pa = data["pa"]
     reception = data["reception"]
     demand = data["demand"]
@@ -85,7 +85,7 @@ def main():
         with open(f"simu_history/state_S{week}.json") as fp:
             data = json.load(fp)
         for p in model.products:
-            G_in, G_out, solvable = applyStrat(risk_manager, week, p, data)  
+            G_in, G_out, solvable = applyReduceGraviteStrat(risk_manager, week, p, data)  
             if G_in > 0.5:
                 tot += 1
                 if G_out < 0.5:
