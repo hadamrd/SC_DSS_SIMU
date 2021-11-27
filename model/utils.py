@@ -1,3 +1,4 @@
+import math
 import re
 import matplotlib.pyplot as plt
 
@@ -27,14 +28,10 @@ def affineY(a, b, x):
         return 0
 
 def affineDy(a, b, x):
-    if x == a == b:
-        return 0
     if a < x < b:
         return 1 / (b - a)
-    elif x < a:
-        return -0.1
-    elif x > b:
-        return 0  
+    else:
+        return 0
 
 def readRefWeekRow(sheet, row, start_col, horizon):
         string_ref_weeks = readSubRow(sheet, row, start_col, horizon)
@@ -46,7 +43,6 @@ def l4n(cR, dR, aD, bD, x):
         return 1
     elif cR >= bD:
         necessity = affineY(cR, dR, x) + 1 - affineY(aD, bD, x)
-        # print(f"here: aD = {aD}, bD = {bD}, xt = {x}, cR = {cR}, dR = {dR} and necessity = {necessity}")
         return necessity
     elif cR < bD:
         x_star = ((bD - aD) * cR + bD * (dR - cR)) / (bD - aD + dR - cR)
@@ -55,15 +51,14 @@ def l4n(cR, dR, aD, bD, x):
         elif x > x_star:
             return affineY(cR, dR, x)
 
-def l4nDiff(cR, dR, aD, bD, x):
-    if aD > dR:
-        res = 0
-    elif cR >= bD:
-        return affineDy(cR, dR, x) - affineDy(aD, bD, x)
-    elif cR < bD:
-        x_star = ((bD - aD) * cR + bD * (dR - cR)) / (bD - aD + dR - cR)
-        return -affineDy(aD, bD, x) if x <= x_star else affineDy(cR, dR, x)
-    return res
+def l4nDiff(c, d, a, b, x):
+    if a > d:
+        return 0
+    elif c >= b:
+        return affineDy(c, d, x) - affineDy(a, b, x)
+    elif c < b:
+        x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
+        return -affineDy(a, b, x) if x <= x_star else affineDy(c, d, x)
 
 def plotSamples(f, min_ax, max_ax, nbr_ech):
     min_ax *= (1 - 1/10)
@@ -74,10 +69,10 @@ def plotSamples(f, min_ax, max_ax, nbr_ech):
 
 if __name__ == "__main__":
     # first case aD <= dR but cR >= bD
-    # aD = 100
-    # bD = aD + 50
-    # cR = bD + 50
-    # dR = cR + 50
+    a = 100
+    b = a + 50
+    c = b + 50
+    d = c + 50
 
     # second case aD <= dR but cR < bD
     # aD = 100
@@ -86,24 +81,37 @@ if __name__ == "__main__":
     # dR = cR + 200
 
     # weird case
-    aD=bD=0
-    cR=dR=371
+    # aD=bD=0
+    # cR=dR=371
 
     nbr_ech = 1000
-    print("aD: ", aD, "cR: ", cR, "bD: ", bD, "dR: ", dR)
+    print("aD: ", a, "cR: ", c, "bD: ", b, "dR: ", d)
     # x_star = ((bD - aD) * cR + bD * (dR - cR)) / (bD - aD + dR - cR)
     # print("x_star: ", x_star)
-    f = lambda x: l4n(cR, dR, aD, bD, x)
+    f = lambda x: l4n(c, d, a, b, x)
 
-    # min_df_val = - 1 / (bD - aD)
-    # max_df_val = 1 / (dR - cR)
-    # nor_df = 1 / max(abs(min_df_val), abs(max_df_val))
-    df = lambda x: 10 * l4nDiff(cR, dR, aD, bD, x)
 
-    min_ax = min(cR, dR, aD, bD)
-    max_ax = max(cR, dR, aD, bD)
-    plotSamples(f, min_ax, max_ax, nbr_ech)
-    plotSamples(df, min_ax, max_ax, nbr_ech)
+    df = lambda x: 10 * l4nDiff(c, d, a, b, x)
+
+    def g(x):
+        if x <= a:
+            alpha = math.log(1 + 2 / (b + c))
+            return 1 - math.exp(alpha * x / a)
+        else:
+            return df(x)
+    
+    def dh(x):
+        eps = 1 - 0.3
+        c3 = ((eps-1)/(a**2*(a**2-b**2)) + 1/(2*(b-a)*b**3) - 1/(b**4) + 1/(b**2*(a**2-b**2)))/(a**2-b**2)
+        c2 = 1/b**4 - 1/(2*(b-a)*b**3) - 2*b**2*c3
+        c1 = (eps-1)/a**2 - a**2*c2 -a**4*c3
+        return 2*c1*x + 4*c2*x**3 + 6*c3*x**5
+        
+
+    min_ax = min(c, d, a, b)
+    max_ax = max(c, d, a, b)
+    plotSamples(f, a, d, nbr_ech)
+    plotSamples(df, a, d, nbr_ech)
     plt.show()
 
 # def sampleTrapeze(a, b, c, d, nbr_ech):
