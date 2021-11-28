@@ -78,12 +78,12 @@ if __name__ == "__main__":
     if not os.path.exists(simulation_folder):
         os.mkdir(simulation_folder)
 
-    simuWithoutPlatform(
-        start_week, 
-        end_week, 
-        inputs_folder=f"{simulation_folder}/inputs_without_plateforme",
-        history_folder=f"{simulation_folder}/history_without_plateforme"
-    )
+    # simuWithoutPlatform(
+    #     start_week, 
+    #     end_week, 
+    #     inputs_folder=f"{simulation_folder}/inputs_without_plateforme",
+    #     history_folder=f"{simulation_folder}/history_without_plateforme"
+    # )
     sim_history.load(history_folder=f"{simulation_folder}/history_without_plateforme")
     sim_history.exportToExcel(
         prefix="WP",
@@ -93,19 +93,19 @@ if __name__ == "__main__":
     metrics.generateMetricsResult(sim_history, 20, "templates/template_metrics.xlsx", f"{simulation_folder}/without_plateforme_excel_results/WP_metrics.xlsx")
 
     history_folder = f"{simulation_folder}/history_with_strat"
-    simuWithAutomatedStrat(
-        start_week,
-        end_week,     
-        sales_forcast_folder=f"{simulation_folder}/inputs_without_plateforme",
-        inputs_folder = f"{simulation_folder}/inputs_with_strat",
-        history_folder = history_folder
-    )
-    sim_history.load(history_folder=history_folder)
-    sim_history.exportToExcel(
-        prefix="WS",
-        results_folder=f"{simulation_folder}/with_strat_excel_results",
-        template_file="templates/template_simu_result.xlsx"
-    )
+    # simuWithAutomatedStrat(
+    #     start_week,
+    #     end_week,     
+    #     sales_forcast_folder=f"{simulation_folder}/inputs_without_plateforme",
+    #     inputs_folder = f"{simulation_folder}/inputs_with_strat",
+    #     history_folder = history_folder
+    # )
+    # sim_history.load(history_folder=history_folder)
+    # sim_history.exportToExcel(
+    #     prefix="WS",
+    #     results_folder=f"{simulation_folder}/with_strat_excel_results",
+    #     template_file="templates/template_simu_result.xlsx"
+    # )
     metrics.generateMetricsResult(sim_history, 20, "templates/template_metrics.xlsx", f"{simulation_folder}/with_strat_excel_results/WS_metrics.xlsx")
 
 

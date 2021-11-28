@@ -56,21 +56,22 @@ def generateMetricsResult(hist: History, horizon: int, template_file: str, dst_f
         writeRow(sheet, 6, 3, pdp_nervosity[p])
         writeRow(sheet, 7, 3, bp_nervosity[p])
 
-        curr_row = 9
-        step = 4
-        for idx, a in enumerate(hist.itProductAff(p)):
-            sheet.cell(curr_row + idx * step, 1).value = a 
-            writeRow(sheet, curr_row + idx, 3, pv_nervosity[a][p])
-            writeRow(sheet, curr_row + idx, 3, pv_nervosity[a][p])
-            writeRow(sheet, curr_row + idx, 3, pv_nervosity[a][p])
-            curr_row += step
+        curr_row = 8
 
-        curr_row = 27
-        for idx, a in enumerate(hist.itProductAff(p)):
-            writeRow(sheet, curr_row + idx, 3, unvailability_mean[a][p])
+        for a in hist.itProductAff(p):
+            curr_row += 1
+            sheet.cell(curr_row, 1).value = a 
+            writeRow(sheet, curr_row, 3, pv_nervosity[a][p])
+            writeRow(sheet, curr_row + 1, 3, ba_nervosity[a][p])
+            writeRow(sheet, curr_row + 2, 3, pa_nervosity[a][p])
+            curr_row += 3
         
-        curr_row = 31
-        writeRow(sheet, curr_row + idx, 3, hist.sumOverAffiliate(unvailability_mean, p, horizon))
+        curr_row = 27
+        for a in hist.itProductAff(p):
+            writeRow(sheet, curr_row, 3, unvailability_mean[a][p])
+            curr_row+=1
+
+        writeRow(sheet, curr_row, 3, hist.sumOverAffiliate(unvailability_mean, p, horizon))
     wb.save(dst_file)
 
 
