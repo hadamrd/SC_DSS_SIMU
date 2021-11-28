@@ -60,7 +60,7 @@ def simuWithAutomatedStrat(start_week, end_week, sales_forcast_folder, inputs_fo
             old_input = json.load(fp)
         model.sales_forcast = old_input["sales_forcast"]
         model.runWeek()
-        model.pa_cdc.supply_plan = filter.run(risk_manager, model)
+        model.cdc_supply_plan = filter.run(risk_manager, model)
         model.saveSnapShot(f"{history_folder}/snapshot_S{k}.json")
         model.generateNextWeekInput(f"{inputs_folder}/input_S{k+1}.json")
 
