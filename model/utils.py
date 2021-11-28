@@ -2,7 +2,7 @@ import re
 import matplotlib.pyplot as plt
 
 
-def accumu(lis):
+def accumu(lis, q0=0):
     total = 0
     for v in lis:
         total += v

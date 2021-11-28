@@ -1,5 +1,5 @@
 import os
-import history
+from history import History
 import json
 from model.model import Model
 from model.smooth_filter import SmoothFilter
@@ -66,8 +66,9 @@ def simuWithAutomatedStrat(start_week, end_week, sales_forcast_folder, inputs_fo
 
 if __name__ == "__main__":
     start_week = 2
-    end_week = 40
+    end_week = 42
     simulation_folder = "simu_result"
+    sim_history = History("simu_inputs/global_input.json")
     if not os.path.exists(simulation_folder):
         os.mkdir(simulation_folder)
 
@@ -77,9 +78,10 @@ if __name__ == "__main__":
         inputs_folder=f"{simulation_folder}/inputs_without_plateforme",
         history_folder=f"{simulation_folder}/history_without_plateforme"
     )
-    history.generate(
-        prefix="WP", 
-        history_folder=f"{simulation_folder}/history_without_plateforme",
+
+    sim_history.load(history_folder=f"{simulation_folder}/history_without_plateforme")
+    sim_history.exportToExcel(
+        prefix="WP",
         results_folder=f"{simulation_folder}/without_plateforme_excel_results",
         template_file="templates/template_simu_result.xlsx"
     )     
@@ -91,9 +93,10 @@ if __name__ == "__main__":
         inputs_folder = f"{simulation_folder}/inputs_with_strat",
         history_folder=f"{simulation_folder}/history_with_strat"
     )
-    history.generate(
+
+    sim_history.load(history_folder=f"{simulation_folder}/history_with_strat")
+    sim_history.exportToExcel(
         prefix="WS",
-        history_folder=f"{simulation_folder}/history_with_strat",
         results_folder=f"{simulation_folder}/with_strat_excel_results",
         template_file="templates/template_simu_result.xlsx"
     )
