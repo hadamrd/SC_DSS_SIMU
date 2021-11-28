@@ -3,4 +3,5 @@ output_S*.json
 snapshot_S*.json
 state_S*.json
 *_results.xlsx
+simu_result/
 *.pyc

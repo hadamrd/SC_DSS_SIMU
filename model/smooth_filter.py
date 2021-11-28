@@ -87,9 +87,9 @@ class SmoothFilter:
             # smoothing
             x_out[product] = self.filter(risk_manager, rpm, dpm, s0, x_in)
             self.validateOutput(x_in, x_out[product])
-        return self.dispatch(risk_manager, x_out)
-
-
+        dispatched_x = self.dispatch(risk_manager, x_out)
+        decumu_x = {a: {p: utils.diff(dispatched_x[a][p]) for p in dispatched_x[a]} for a in dispatched_x}
+        return decumu_x
 
 if __name__ == "__main__":
     pass
