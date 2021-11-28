@@ -1,6 +1,7 @@
 from .risk_manager import RiskManager
 from .model import Model
 from . import utils
+from model import risk_manager
 
 
 class SmoothFilter:
@@ -65,7 +66,10 @@ class SmoothFilter:
             for p in daffpm[a]:
                 for t in range(risk_m.horizon):
                     tot_dem = sum([daffpm[a][p]["b"][t] for a in daffpm if p in daffpm[a]])
-                    res[a][p][t] = x[p][t] * daffpm[a][p]["b"][t] / tot_dem if tot_dem != 0 else 0
+                    res[a][p][t] = round(x[p][t] * daffpm[a][p]["b"][t] / tot_dem) if tot_dem != 0 else 0
+                for t in range(risk_m.horizon):
+                    if res[a][p][t] < 0:
+                        raise Exception("dispatched plan is xt < 0") 
         return res
 
     def run(self, risk_manager: RiskManager, model: Model) -> dict[str, dict[str, list[int]]]:
@@ -88,7 +92,7 @@ class SmoothFilter:
             x_out[product] = self.filter(risk_manager, rpm, dpm, s0, x_in)
             self.validateOutput(x_in, x_out[product])
         dispatched_x = self.dispatch(risk_manager, x_out)
-        decumu_x = {a: {p: utils.diff(dispatched_x[a][p]) for p in dispatched_x[a]} for a in dispatched_x}
+        decumu_x = {a: {p: utils.diff(dispatched_x[a][p]) + pa[product][n:] for p in dispatched_x[a]} for a in dispatched_x}
         return decumu_x
 
 if __name__ == "__main__":
