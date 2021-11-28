@@ -29,12 +29,13 @@ class RiskManager:
             r += 1
     
     def getDpm(self, d, p):
+        n = self.horizon
         params = ["a", "b", "c", "d"]
-        dist = {param: [0] * self.horizon for param in params + ["ref_week", "model_type"]}
+        dist = {a: {param: [0] * n for param in params + ["ref_week", "model_type"]} for a in d}
         for a in d:
             if p in d[a]:
                 Q = list(utils.accumu(d[a][p]))
-                for t in range(self.horizon):
+                for t in range(n):
                     rw_t = self.d_aff_model[a][p]["RefWeek"][t]
                     model_type = self.d_aff_model[a][p]["ModelType"][t] 
                     for param in params:
@@ -42,7 +43,15 @@ class RiskManager:
                         F_t = Q[t] - Q[rw_t-2] if rw_t-2>0 else Q[t]
                         if model_type == "I1":
                             F_t /= t - (rw_t-1) + 1
-                        dist[param][t] += Q[t] + alpha_t * F_t
+                        dist[a][param][t] = Q[t] + alpha_t * F_t
+                for t in range(n):
+                    if t > 0:
+                        dist[a]["a"][t] = max(dist[a]["a"][t-1], dist[a]["a"][t]) 
+                        dist[a]["b"][t] = max(dist[a]["b"][t-1], dist[a]["b"][t]) 
+                    tr = n - 1 - t
+                    if tr < n - 1:
+                        dist[a]["c"][tr] = min(dist[a]["c"][tr], dist[a]["c"][tr+1])
+                        dist[a]["d"][tr] = max(dist[a]["d"][tr], dist[a]["d"][tr+1])
         return dist
         
     def loadRModel(self, model: Model, file_name: str) -> None:

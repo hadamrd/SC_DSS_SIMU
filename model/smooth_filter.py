@@ -1,3 +1,4 @@
+from math import prod
 from .risk_manager import RiskManager
 from .model import Model
 from . import utils
@@ -14,9 +15,9 @@ class SmoothFilter:
         n = len(x_out)
         if n != len(x_in):
             raise Exception(f"Solution size {len(x_out)} != input size {len(x_in)}!")
-        for t in range(n-1):
-            if x_out[t] > x_out[t+1]:
-                raise Exception(f"x_out[{t}] = {x_out[t]} > x_out[{t+1}] = {x_out[t+1]}!")
+        for t in range(1, n):
+            if x_out[t] < x_out[t-1]:
+                raise Exception(f"x_out[{t}] = {x_out[t]} < x_out[{t-1}] = {x_out[t-1]}!")
         if x_out[n-1] != x_in[n-1]:
             raise Exception("Didn't conserve same total quantity!")
 
@@ -59,27 +60,43 @@ class SmoothFilter:
             n_iter += 1
         return x
 
-    def dispatch(self, risk_m: RiskManager, x: dict):
-        daffpm = risk_m.d_aff_model
-        res = {a: {p: [None for _ in range(risk_m.horizon)] for p in daffpm[a]} for a in daffpm}
+    def dispatchWithBruteSupply(self, supply_ratio, x, a, p):
+        n = len(x)
+        res = [None for _ in range(n)]
+        for t in range(n):
+            res[t] = round(x[t] * supply_ratio[a][p][t])
+        return res
+
+    def dispatchWithRiskModel(self, daffpm, x):
+        n = len(x)
+        res = {a: [None for _ in range(n)] for a in daffpm}
         for a in daffpm:
-            for p in daffpm[a]:
-                for t in range(risk_m.horizon):
-                    tot_dem = sum([daffpm[a][p]["b"][t] for a in daffpm if p in daffpm[a]])
-                    res[a][p][t] = round(x[p][t] * daffpm[a][p]["b"][t] / tot_dem) if tot_dem != 0 else 0
-                for t in range(risk_m.horizon):
-                    if res[a][p][t] < res[a][p][t-1]:
-                        raise Exception("dispatched plan is uncorrect xt-1 > xt") 
+            for t in range(1, n):
+                if x[t] < x[t-1]:
+                    raise Exception("The plan x is uncorrect xt-1 > xt", x)
+            for t in range(n):
+                tot_dem = sum([daffpm[a]["b"][t] for a in daffpm])
+                res[a][t] = round(x[t] * daffpm[a]["b"][t] / tot_dem) if tot_dem != 0 else 0
+            for t in range(1, n):
+                if res[a][t] < res[a][t-1]:
+                    print("affiliate: ", a)
+                    print("X aff: ", res[a])
+                    print("B aff: ", daffpm[a]["b"])
+                    print("B aff / B tot: ", [daffpm[a]["b"][t]/sum([daffpm[a]["b"][t] for a in daffpm]) for t in range(n)])
+                    raise Exception("dispatched plan is uncorrect xt-1 > xt") 
         return res
 
     def run(self, risk_manager: RiskManager, model: Model) -> dict[str, dict[str, list[int]]]:
         data = model.getCurrState()
         pa = data["pa"]
         reception = data["reception"]
-        demand = data["demand"]
+        supply = data["demand"]
         initial_stock = data["initial_stock"]
+        supply_ratio = model.pa_cdc.supply_ratio
         n = risk_manager.horizon
-        x_out = {}
+        decum_x_out = {}
+        decum_x_out = {a: {p: None for p in model.affiliate_product[a]} for a in model.affiliate_name}
+
         for product in pa:
             # get product inputs
             x_in = list(utils.accumu(pa[product]))[:n]
@@ -87,13 +104,26 @@ class SmoothFilter:
             s0 = initial_stock[product]
             # calculate possibility models
             rpm = risk_manager.getRpm(r, product)
-            dpm = risk_manager.getDpm(demand, product)
+            aff_dpm = risk_manager.getDpm(supply, product)
+            # get dpm / product, sum over afiiliate
+            params = ["a", "b", "c", "d"]
+            dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
             # smoothing
-            x_out[product] = self.filter(risk_manager, rpm, dpm, s0, x_in)
-            self.validateOutput(x_in, x_out[product])
-        dispatched_x = self.dispatch(risk_manager, x_out)
-        decumu_x = {a: {p: utils.diff(dispatched_x[a][p]) + pa[product][n:] for p in dispatched_x[a]} for a in dispatched_x}
-        return decumu_x
+            x_out_product = self.filter(risk_manager, rpm, dpm, s0, x_in)
+            self.validateOutput(x_in, x_out_product)
+            # decumlate
+            decum_x_out[product] = utils.diff(x_out_product) + pa[product][n:]
+            # print("x_out: ", x_out[product])
+            # print("decum x_out: ", decum_product_x)
+
+        for a in supply:
+            for p in supply[a]:
+                # print("Processing product: ", product)
+                # affs = [a for a in model.affiliate_name if product in model.affiliate_product[a]]
+                # print(f"affiliates that consume {product} are : {affs}")
+                decum_x_out[a][p] = self.dispatchWithBruteSupply(supply_ratio, decum_x_out[p], a, p)
+
+        return decum_x_out
 
 if __name__ == "__main__":
     pass

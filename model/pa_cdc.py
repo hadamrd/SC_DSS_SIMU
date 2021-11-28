@@ -47,7 +47,8 @@ class PA_CDC:
         self.product_supply_demand = self.getProductSupplyDemand()
         self.prev_supply_plan = self.getPrevSupplyPlan()
         self.total_prev_supply_plan = self.getTotalPrevSupplyPlan()
-        
+        self.supply_ratio = {a: {p: [None] * self.model.horizon for p in aff.products} for a, aff in self.model.affiliates.items()}
+
         for a, affiliate in affiliates.items():
             for p in affiliate.products:
                 self.supply_plan[a][p][:2] = self.prev_supply_plan[a][p][:2]
@@ -70,8 +71,8 @@ class PA_CDC:
                     if p in aff.products:
                         if t >= 2:
                             if self.raw_need[p][t] > 0:
-                                supply_ratio = (self.supply_demand[a][p][t] + self.unavailability[a][p][t-1]) / self.raw_need[p][t]
-                                self.supply_plan[a][p][t] = max(round(supply_ratio * self.possible_to_promise[p][t]), 0)
+                                self.supply_ratio[a][p][t] = (self.supply_demand[a][p][t] + self.unavailability[a][p][t-1]) / self.raw_need[p][t]
+                                self.supply_plan[a][p][t] = max(round(self.supply_ratio[a][p][t] * self.possible_to_promise[p][t]), 0)
                             else: 
                                 self.supply_plan[a][p][t] = 0
                         self.unavailability[a][p][t] = self.unavailability[a][p][t-1] + self.supply_demand[a][p][t] - self.supply_plan[a][p][t]
