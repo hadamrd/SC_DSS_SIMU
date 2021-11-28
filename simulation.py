@@ -4,6 +4,11 @@ import json
 from model.model import Model
 from model.smooth_filter import SmoothFilter
 from model.risk_manager import RiskManager
+import metrics
+
+
+simu_global_input_f = "simu_inputs/global_input.json"
+first_simu_input = "simu_inputs/input_S2.json"
 
 def replicateFile(src, dst):
     with open(src) as fp:
@@ -12,12 +17,12 @@ def replicateFile(src, dst):
         json.dump(src_d, fp)
 
 def simuWithoutPlatform(start_week, end_week, inputs_folder, history_folder):
-    model = Model(f"simu_inputs/global_input.json")
+    model = Model(simu_global_input_f)
     if not os.path.exists(history_folder):
         os.mkdir(history_folder)
     if not os.path.exists(inputs_folder):
         os.mkdir(inputs_folder)
-    replicateFile("simu_inputs/input_S2.json", os.path.join(inputs_folder, "input_S2.json"))
+    replicateFile(first_simu_input, os.path.join(inputs_folder, "input_S2.json"))
     for k in range(start_week, end_week+1):
         model.loadWeekInput(os.path.join(inputs_folder, f"input_S{k}.json"))
         model.runWeek()
@@ -25,7 +30,7 @@ def simuWithoutPlatform(start_week, end_week, inputs_folder, history_folder):
         model.generateNextWeekInput(os.path.join(inputs_folder, f"input_S{k+1}.json"))
     
 def simuWithPlatform(start_week, end_week):
-    model = Model(f"simu_inputs/global_input.json")
+    model = Model(simu_global_input_f)
     for k in range(start_week, end_week+1):
         model.loadWeekInput(f"simu_inputs/input_S{k}.json")
         with open(f"old_inputs/input_S{k}.json") as fp:
@@ -47,8 +52,8 @@ def simuWithAutomatedStrat(start_week, end_week, sales_forcast_folder, inputs_fo
         os.mkdir(history_folder)
     if not os.path.exists(inputs_folder):
         os.mkdir(inputs_folder)
-    replicateFile("simu_inputs/input_S2.json", os.path.join(inputs_folder, "input_S2.json"))
-    model = Model(f"simu_inputs/global_input.json")
+    replicateFile(first_simu_input, os.path.join(inputs_folder, "input_S2.json"))
+    model = Model(simu_global_input_f)
     n = model.horizon - 4
     risk_manager = RiskManager(n)
     risk_manager.loadDModel(model, "uncertainty_models/UMCDF_I2.xlsx")
@@ -68,7 +73,8 @@ if __name__ == "__main__":
     start_week = 2
     end_week = 42
     simulation_folder = "simu_result"
-    sim_history = History("simu_inputs/global_input.json")
+    sim_history = History(simu_global_input_f)
+
     if not os.path.exists(simulation_folder):
         os.mkdir(simulation_folder)
 
@@ -78,28 +84,29 @@ if __name__ == "__main__":
         inputs_folder=f"{simulation_folder}/inputs_without_plateforme",
         history_folder=f"{simulation_folder}/history_without_plateforme"
     )
-
     sim_history.load(history_folder=f"{simulation_folder}/history_without_plateforme")
     sim_history.exportToExcel(
         prefix="WP",
         results_folder=f"{simulation_folder}/without_plateforme_excel_results",
         template_file="templates/template_simu_result.xlsx"
     )     
+    metrics.generateMetricsResult(sim_history, 20, "templates/template_metrics.xlsx", f"{simulation_folder}/without_plateforme_excel_results/WP_metrics.xlsx")
 
+    history_folder = f"{simulation_folder}/history_with_strat"
     simuWithAutomatedStrat(
         start_week,
         end_week,     
         sales_forcast_folder=f"{simulation_folder}/inputs_without_plateforme",
         inputs_folder = f"{simulation_folder}/inputs_with_strat",
-        history_folder=f"{simulation_folder}/history_with_strat"
+        history_folder = history_folder
     )
-
-    sim_history.load(history_folder=f"{simulation_folder}/history_with_strat")
+    sim_history.load(history_folder=history_folder)
     sim_history.exportToExcel(
         prefix="WS",
         results_folder=f"{simulation_folder}/with_strat_excel_results",
         template_file="templates/template_simu_result.xlsx"
     )
+    metrics.generateMetricsResult(sim_history, 20, "templates/template_metrics.xlsx", f"{simulation_folder}/with_strat_excel_results/WS_metrics.xlsx")
 
 
 

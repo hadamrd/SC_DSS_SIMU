@@ -4,7 +4,8 @@ from .affiliate import Affiliate
 from .pa_cdc import PA_CDC
 from .factory import Factory
 from .cbn_cdc import CBN_CDC
-from . import platform_interface 
+from . import platform_interface
+from model import affiliate 
 class Model:
     def __init__(self, input_file) -> None:
         with open(input_file) as json_file:
@@ -145,6 +146,7 @@ class Model:
             "supply_demand": self.getAffiliateSupplyDemand(),
             "prod_demand": self.getCDCProdDemand(),
             "sales_forcast": self.sales_forcast,
+            "unavailabiliy": self.pa_cdc.unavailability
         }
         with open(file_name, 'w') as fp:
             json.dump(snap, fp)
@@ -155,3 +157,4 @@ class Model:
     def saveCDCSupplyPlan(self, file_path):
         with open(file_path, 'w') as fp:
             json.dump(self.cdc_supply_plan, fp)
+

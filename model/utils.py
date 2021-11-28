@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 def accumu(lis, q0=0):
-    total = 0
+    total = q0
     for v in lis:
         total += v
         yield total
