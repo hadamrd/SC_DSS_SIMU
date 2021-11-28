@@ -68,8 +68,8 @@ class SmoothFilter:
                     tot_dem = sum([daffpm[a][p]["b"][t] for a in daffpm if p in daffpm[a]])
                     res[a][p][t] = round(x[p][t] * daffpm[a][p]["b"][t] / tot_dem) if tot_dem != 0 else 0
                 for t in range(risk_m.horizon):
-                    if res[a][p][t] < 0:
-                        raise Exception("dispatched plan is xt < 0") 
+                    if res[a][p][t] < res[a][p][t-1]:
+                        raise Exception("dispatched plan is uncorrect xt-1 > xt") 
         return res
 
     def run(self, risk_manager: RiskManager, model: Model) -> dict[str, dict[str, list[int]]]:
