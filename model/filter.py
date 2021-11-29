@@ -61,7 +61,11 @@ class SmoothingFilter(Shared):
         n = len(x)
         res = [None for _ in range(n)]
         for t in range(n):
-            res[t] = round(x[t] * supply_ratio[a][p][t])
+            res[t] = max(round(x[t] * supply_ratio[a][p][t]), 0)
+            if res[t] < 0:
+                print("decumulated x: ", x)
+                print("supply_ratio: ", supply_ratio[a][p])
+                raise Exception("Got a negative x")
         return res
 
     def dispatchWithRiskModel(self, daffpm, x):
