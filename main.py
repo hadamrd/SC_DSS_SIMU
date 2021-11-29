@@ -20,7 +20,6 @@ if __name__ == "__main__":
     # Generate all sales history beforhand
     sales_manager.generateSalesHistory(initial_sales_f, start_week, end_week, sales_folder)
 
-    
     # Run without smoothing the PA plan
     print("> Working on with smoothing filter case: ")
     my_simu.run(
