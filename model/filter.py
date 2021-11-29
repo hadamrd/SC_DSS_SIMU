@@ -1,4 +1,3 @@
-from model import risk
 from . import Shared
 from . import RiskManager, Model
 from . import utils
