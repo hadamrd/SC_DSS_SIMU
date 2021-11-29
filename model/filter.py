@@ -8,6 +8,7 @@ class SmoothingFilter(Shared):
     def __init__(self, risk_manager: RiskManager) -> None:
         super().__init__()
         self.risk_manager = risk_manager
+
     def validateOutput(self, x_in: list[int], x_out: list[int]):
         n = len(x_out)
         if n != len(x_in):
@@ -26,10 +27,8 @@ class SmoothingFilter(Shared):
         to_solve = set([i for i in range(self.fixed_horizon, n-1) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
         solved = set()
-        n_iter = 0
-        max_iter = 200
-        while solved | unsolvable != to_solve and n_iter < max_iter:
-            for t in to_solve - unsolvable:
+        while to_solve:
+            for t in to_solve:
                 if l4n[t] < self.l4n_threshold:
                     continue
                 c, d = rpm["c"][t] + s0, rpm["d"][t] + s0 
@@ -39,22 +38,29 @@ class SmoothingFilter(Shared):
                     continue 
                 if c >= b:
                     if x[t] < b:
-                        x[t] = min(b, x[t+1])
-                        if t == n-2 and x[t] == x[-1] and l4n_in[-1] >= self.l4n_threshold:
+                        x_star = round(b - self.l4n_threshold * (b - a)) + 1
+                        x[t] = min(x_star, x[t+1])
+                        if x[t] == x[t+1] and t + 1 not in to_solve:
                             unsolvable.add(t)
                     elif x[t] > c:
-                        x[t] = max(c, x[t-1])
+                        x_star = round(c + self.l4n_threshold * (d - c)) - 1
+                        x[t] = max(x_star, x[t-1])
+                        if x[t] == x[t-1] and t - 1 not in to_solve:
+                            unsolvable.add(t)
                 else:
                     x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
                     if RiskManager.l4n(a, b, c, d, x_star) >= self.l4n_threshold:
                         unsolvable.add(t)
                     if x[t] > x_star:
                         x[t] = max(x_star, x[t-1])
+                        if x[t] == x[t-1] and t - 1 not in to_solve:
+                            unsolvable.add(t)
                     else:
                         x[t] = min(x_star, x[t+1])
+                        if x[t] == x[t+1] and t + 1 not in to_solve:
+                            unsolvable.add(t)
             l4n = RiskManager.getL4Necessity(rpm, dpm, x, s0)
-            solved = set([i for i in range(n) if l4n[i] < self.l4n_threshold <= l4n_in[i]])
-            n_iter += 1
+            to_solve = set([i for i in range(self.fixed_horizon, n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
         return x
 
     def dispatchWithNetSupply(self, supply_ratio, x, a, p):

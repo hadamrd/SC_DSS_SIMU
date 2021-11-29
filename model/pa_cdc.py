@@ -73,8 +73,8 @@ class PA_CDC:
                         self.supply_ratio[a][p][t] = (self.supply_demand[a][p][t] + self.unavailability[a][p][t-1]) / self.raw_need[p][t] if self.raw_need[p][t] != 0 else 0
 
                 if t >= 2:
-                    prejected_available_quantity = self.prod_plan[p][t] + self.queued_prod[p][t] + self.projected_stock[p][t-1]
-                    self.possible_to_promise[p][t] = max(min(self.raw_need[p][t], prejected_available_quantity), 0)
+                    projected_available_quantity = self.prod_plan[p][t] + self.queued_prod[p][t] + self.projected_stock[p][t-1]
+                    self.possible_to_promise[p][t] = max(min(self.raw_need[p][t], projected_available_quantity), 0)
 
                 for a, aff in affiliates.items(): 
                     if p in aff.products:

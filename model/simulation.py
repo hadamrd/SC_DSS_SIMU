@@ -65,11 +65,12 @@ class Simulation:
         )
         print("Finished")
 
-        print("Generating metrics excel files ... ", end="")
-        metrics.generateMetricsResult(
+        print("Generating metrics excel files ... ")
+        mean_var_nerv = metrics.generateMetricsResult(
             hist=self.sim_history,
             dst_file=self.metric_result_f
         )
         print("Finished")
 
         Simulation.count += 1
+        return mean_var_nerv
