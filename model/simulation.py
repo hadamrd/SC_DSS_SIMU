@@ -19,18 +19,19 @@ class Simulation:
 
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
         with open(os.path.join(self.inputs_folder, f"input_S{start_week}.json")) as fp:
-            input_dict = json.load(fp)
-        for k in range(start_week + 1, end_week + 1):
+            input = json.load(fp)
+        for k in range(start_week, end_week + 1):
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
             snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
             sales_f = os.path.join(self.sales_folder, f"sales_S{k}.json")
-            self.model.loadWeekInput(input_dict=input_dict)
+            self.model.loadWeekInput(input_dict=input)
             self.model.loadSalesForcast(sales_f)
             self.model.runWeek()
             if smoothing_filter:
                 self.model.cdc_supply_plan = smoothing_filter.run(self.model)
-            self.model.saveSnapShot(snapshot_f)
-            input_dict = self.model.generateNextWeekInput(next_input_f)    
+            snapshot = self.model.saveSnapShot(snapshot_f)
+            self.sim_history.fillData(snapshot)
+            input = self.model.generateNextWeekInput(next_input_f)
 
     def run(self, initial_input_f, start_week, end_week, sales_folder, output_folder, pa_filter=None):
         self.history_folder  = f"{output_folder}/history"
@@ -38,6 +39,7 @@ class Simulation:
         self.results_folder  = f"{output_folder}/results"
         self.metric_result_f = f"{self.results_folder}/metrics.xlsx"
         self.sales_folder    = sales_folder
+        self.sim_history.init(start_week, end_week)
 
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)
@@ -48,22 +50,26 @@ class Simulation:
             
         utils.replicateFile(initial_input_f, os.path.join(self.inputs_folder, "input_S2.json"))
 
+        print("Generating simu history ... ", end="")
         self.generateHistory(
             start_week,
             end_week,
             smoothing_filter=pa_filter
         )
+        print("Finished")
 
-        self.sim_history.load(history_folder=self.history_folder)
-
+        print("Exporting history to excel files ... ", end="")
         self.sim_history.exportToExcel(
             prefix=Simulation.count,
             results_folder=self.results_folder
         )
+        print("Finished")
 
+        print("Generating metrics excel files ... ", end="")
         metrics.generateMetricsResult(
             hist=self.sim_history,
             dst_file=self.metric_result_f
         )
+        print("Finished")
 
         Simulation.count += 1

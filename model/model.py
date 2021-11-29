@@ -122,6 +122,7 @@ class Model(Shared):
 
     def saveSnapShot(self, file_name):
         snap = {
+            "week": self.week,
             "supply_plan": self.getNextSupplyPlan(),
             "prod_plan": self.getNextProdPlan(),
             "supply_demand": self.getAffiliateSupplyDemand(),
@@ -131,7 +132,8 @@ class Model(Shared):
         }
         with open(file_name, 'w') as fp:
             json.dump(snap, fp)
-
+        return snap
+        
     def getPlatformInput(self, file_path):
         platform_interface.generateInput(file_path, self)
         

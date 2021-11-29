@@ -34,14 +34,10 @@ class History(Shared):
         cum_hist.prod_demand    = {p: self.getQuantityCumHistory(self.prod_demand[p]) for p in self.products}
         return cum_hist
 
-    def load(self, history_folder):
-        for file_name in os.listdir(history_folder):
-            if file_name.startswith("snapshot_S"):
-                week = int(re.match(".*S(\d+).*", file_name).group(1))
-                self.start_week = min(week, self.start_week) if self.start_week is not None else week
-                self.end_week = max(week, self.end_week) if self.end_week is not None else week
+    def init(self, start_week, end_week):
+        self.start_week = start_week
+        self.end_week = end_week
         self.nbr_weeks = self.end_week - self.start_week + 1
-        
         self.sales_forcast  = {a: {p: [None] * self.nbr_weeks for p in self.affiliate_products[a]} for a in self.affiliate_name}
         self.supply_demand  = {a: {p: [None] * self.nbr_weeks for p in self.affiliate_products[a]} for a in self.affiliate_name}
         self.supply_plan    = {a: {p: [None] * self.nbr_weeks for p in self.affiliate_products[a]} for a in self.affiliate_name}
@@ -49,20 +45,30 @@ class History(Shared):
         self.prod_plan      = {p: [None] * self.nbr_weeks for p in self.products}
         self.prod_demand    = {p: [None] * self.nbr_weeks for p in self.products}
 
+    def fillData(self, snapshot):
+        w = snapshot["week"] - self.start_week
+        for p in self.products:
+            for a in self.affiliate_name:
+                if p in self.affiliate_products[a]:
+                    self.supply_demand[a][p][w] = snapshot["supply_demand"][a][p]
+                    self.sales_forcast[a][p][w] = snapshot["sales_forcast"][a][p]
+                    self.supply_plan[a][p][w] = snapshot["supply_plan"][a][p]
+                    self.unavailability[a][p][w] = snapshot["unavailabiliy"][a][p]
+            self.prod_plan[p][w] = snapshot["prod_plan"][p]
+            self.prod_demand[p][w] = snapshot["prod_demand"][p]
+
+    def load(self, history_folder):
+        for file_name in os.listdir(history_folder):
+            if file_name.startswith("snapshot_S"):
+                week = int(re.match(".*S(\d+).*", file_name).group(1))
+                start_week = min(week, self.start_week) if self.start_week is not None else week
+                end_week = max(week, self.end_week) if self.end_week is not None else week
+        self.init(start_week, end_week)
         for file_name in os.listdir(history_folder):
             if file_name.startswith("snapshot_S"):
                 with open(os.path.join(history_folder, file_name)) as fp:
                     snapshot = json.load(fp)
-                w = int(re.match(".*S(\d+).*", file_name).group(1)) - self.start_week
-                for p in self.products:
-                    for a in self.affiliate_name:
-                        if p in self.affiliate_products[a]:
-                            self.supply_demand[a][p][w] = snapshot["supply_demand"][a][p]
-                            self.sales_forcast[a][p][w] = snapshot["sales_forcast"][a][p]
-                            self.supply_plan[a][p][w] = snapshot["supply_plan"][a][p]
-                            self.unavailability[a][p][w] = snapshot["unavailabiliy"][a][p]
-                    self.prod_plan[p][w] = snapshot["prod_plan"][p]
-                    self.prod_demand[p][w] = snapshot["prod_demand"][p]
+                self.fillData(snapshot)
 
     def exportToExcel(self, prefix, results_folder):
         if not os.path.exists(results_folder):

@@ -44,7 +44,6 @@ def generateMetricsResult(hist: History, dst_file: str):
     ba_nervosity = getQMetric(cum_hist.supply_demand, periodNervosity, horizon)
     pv_nervosity = getQMetric(cum_hist.sales_forcast, periodNervosity, horizon)
     unvailability_mean = getQMetric(hist.unavailability, periodMean, horizon)
-
     wb = openpyxl.load_workbook(hist.metrics_template_f)
     for p in hist.products:
         sheet = wb[p]
@@ -53,9 +52,7 @@ def generateMetricsResult(hist: History, dst_file: str):
         utils.writeRow(sheet, 5, 3, hist.sumOverAffiliate(pa_nervosity, p, horizon))
         utils.writeRow(sheet, 6, 3, pdp_nervosity[p])
         utils.writeRow(sheet, 7, 3, bp_nervosity[p])
-
         curr_row = 8
-
         for a in hist.itProductAff(p):
             curr_row += 1
             sheet.cell(curr_row, 1).value = a 
@@ -63,12 +60,10 @@ def generateMetricsResult(hist: History, dst_file: str):
             utils.writeRow(sheet, curr_row + 1, 3, ba_nervosity[a][p])
             utils.writeRow(sheet, curr_row + 2, 3, pa_nervosity[a][p])
             curr_row += 3
-        
         curr_row = 27
         for a in hist.itProductAff(p):
             utils.writeRow(sheet, curr_row, 3, unvailability_mean[a][p])
             curr_row+=1
-
         utils.writeRow(sheet, curr_row, 3, hist.sumOverAffiliate(unvailability_mean, p, horizon))
     wb.save(dst_file)
 

@@ -63,6 +63,7 @@ class SalesManager(Shared):
         return pv
     
     def generateSalesHistory(self, initial_sales_f, start_week, end_week, dst_folder):
+        print("Generating sales history ... ", end="")
         if not os.path.exists(dst_folder):
             os.makedirs(dst_folder)
         utils.replicateFile(initial_sales_f, os.path.join(dst_folder, f"sales_S{start_week}.json"))
@@ -77,6 +78,7 @@ class SalesManager(Shared):
             dst_file = os.path.join(dst_folder, f"sales_S{w}.json")
             with open(dst_file, "w") as fp:
                 json.dump(sales, fp)
+        print("Finished")
 
     
 
