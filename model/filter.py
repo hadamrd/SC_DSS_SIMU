@@ -1,7 +1,7 @@
 from . import Shared
 from . import RiskManager, Model
 from . import utils
-
+import math
 
 class SmoothingFilter(Shared):
 
@@ -63,11 +63,11 @@ class SmoothingFilter(Shared):
             to_solve = set([i for i in range(self.fixed_horizon, n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
         return x
 
-    def dispatchWithNetSupply(self, supply_ratio, x, a, p):
+    def dispatchWithNetSupply(self, pa, supply_ratio, x, a, p):
         n = len(x)
-        res = [None for _ in range(n)]
-        for t in range(n):
-            res[t] = max(round(x[t] * supply_ratio[a][p][t]), 0)
+        res = pa[:2] + [None for _ in range(2, n)]
+        for t in range(2, n):
+            res[t] = max(math.floor((x[t] * supply_ratio[a][p][t])), 0)
             if res[t] < 0:
                 print("decumulated x: ", x)
                 print("supply_ratio: ", supply_ratio[a][p])
@@ -89,19 +89,20 @@ class SmoothingFilter(Shared):
                     print("affiliate: ", a)
                     print("X aff: ", res[a])
                     print("B aff: ", daffpm[a]["b"])
-                    print("B aff / B tot: ", [daffpm[a]["b"][t]/sum([daffpm[a]["b"][t] for a in daffpm]) for t in range(n)])
+                    print("B aff / B tot: ", [daffpm[a]["b"][t] / sum([daffpm[a]["b"][t] for a in daffpm]) for t in range(n)])
                     raise Exception("dispatched plan is uncorrect xt-1 > xt") 
         return res
 
     def run(self, model: Model) -> dict[str, dict[str, list[int]]]:
         data = model.getCurrState()
         pa = data["pa"]
+        pa_aff = model.pa_cdc.supply_plan
         reception = data["reception"]
-        supply = data["demand"]
+        demand = data["demand"]
         initial_stock = data["initial_stock"]
         supply_ratio = model.pa_cdc.supply_ratio
         n = self.real_horizon
-        decum_x_out = {}
+        decum_x_tot_out = {}
         decum_x_out = {a: {p: None for p in model.affiliate_products[a]} for a in model.affiliate_name}
 
         for product in self.products:
@@ -111,7 +112,7 @@ class SmoothingFilter(Shared):
             s0 = initial_stock[product]
             # calculate possibility models
             rpm = self.risk_manager.getRpm(cum_reception, product)
-            aff_dpm = self.risk_manager.getDpm(supply, product)
+            aff_dpm = self.risk_manager.getDpm(demand, product)
             # get dpm / product, sum over afiiliate
             params = ["a", "b", "c", "d"]
             dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
@@ -119,7 +120,7 @@ class SmoothingFilter(Shared):
             x_out_product = self.filter(rpm, dpm, s0, x_in)
             self.validateOutput(x_in, x_out_product)
             # decumlate
-            decum_x_out[product] = utils.diff(x_out_product) + pa[product][n:]
+            decum_x_tot_out[product] = utils.diff(x_out_product) + pa[product][n:]
             # print("x_out: ", x_out[product])
             # print("decum x_out: ", decum_product_x)
 
@@ -127,7 +128,7 @@ class SmoothingFilter(Shared):
             # print("Processing product: ", product)
             # affs = [a for a in model.affiliate_name if product in model.affiliate_product[a]]
             # print(f"affiliates that consume {product} are : {affs}")
-            decum_x_out[a][p] = self.dispatchWithNetSupply(supply_ratio, decum_x_out[p], a, p)
+            decum_x_out[a][p] = self.dispatchWithNetSupply(pa_aff[a][p], supply_ratio, decum_x_tot_out[p], a, p)
 
         return decum_x_out
 

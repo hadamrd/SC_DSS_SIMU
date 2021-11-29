@@ -59,8 +59,6 @@ def generateMetricsResult(hist: History, dst_file: str):
     for p in hist.products:
         sheet = wb[p]
         product_pa_nervosity = hist.sumOverAffiliate(pa_nervosity, p, horizon)
-        mean_nervo = sum(product_pa_nervosity) / len(product_pa_nervosity)
-        print(f"product: {p}, mean PA nervosity : {mean_nervo}")
         utils.writeRow(sheet, 3, 3, hist.sumOverAffiliate(pv_nervosity, p, horizon))
         utils.writeRow(sheet, 4, 3, hist.sumOverAffiliate(ba_nervosity, p, horizon))
         utils.writeRow(sheet, 5, 3, product_pa_nervosity)

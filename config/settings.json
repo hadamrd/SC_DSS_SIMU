@@ -2,7 +2,7 @@
     "horizon": 24,
     "real_horizon": 20,
     "fixed_horizon": 2,
-    "l4n_threshold": 1,
+    "l4n_threshold": 0.5,
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
     "affiliate_code": {

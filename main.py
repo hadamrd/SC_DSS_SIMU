@@ -47,8 +47,8 @@ if __name__ == "__main__":
         print(f"affiliate: {a}, product: {p}")
         print("mean, var nervosity without platform: {0}\t{1}".format(mean_var_nerv["pa"]["mean"][a][p], mean_var_nerv["pa"]["var"][a][p]))
         print("mean, var nervosity with platform: ", mean_var_nerv_wf["pa"]["mean"][a][p], mean_var_nerv_wf["pa"]["var"][a][p])
-        res = round(100 * mean_var_nerv_wf["pa"]["var"][a][p] / mean_var_nerv["pa"]["var"][a][p])
-        print(f"var(with platform) / var(without platform) = {res}%")
+        res = round(100 * (mean_var_nerv_wf["pa"]["var"][a][p] - mean_var_nerv["pa"]["var"][a][p]) / mean_var_nerv["pa"]["var"][a][p])
+        print(f"nervosity(wit/without) = {res}")
 
     print("*** FINISHED")
 
