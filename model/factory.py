@@ -20,12 +20,12 @@ class Factory:
         self.total_net_demand = self.getTotalNetDemand()
         
         for p in self.model.products:
-            self.prod_plan[p][0] = self.prev_prod_plan[p][0]
-            self.prod_plan[p][1] = self.prev_prod_plan[p][1]
+            self.prod_plan[p][:self.model.fixed_horizon] = self.prev_prod_plan[p][:self.model.fixed_horizon]
             self.unavailability[p][0] = self.prod_demand[p][0] - self.prod_plan[p][0]
-            self.unavailability[p][1] = self.unavailability[p][0] + self.prod_demand[p][1] - self.prod_plan[p][1]
+            for t in range(1, self.model.fixed_horizon):
+                self.unavailability[p][t] = self.unavailability[p][t-1] + self.prod_demand[p][t] - self.prod_plan[p][t]
 
-            for t in range(2, self.model.horizon):
+            for t in range(self.model.fixed_horizon, self.model.horizon):
                 raw_need = self.prod_demand[p][t] + self.unavailability[p][t - 1]
                 if self.total_net_demand[t] > self.packaging_capacity[t]:
                     demand_ratio = self.prod_demand[p][t] / self.total_net_demand[t]

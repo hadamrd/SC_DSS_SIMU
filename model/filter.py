@@ -24,9 +24,8 @@ class SmoothingFilter(Shared):
         x = x_in.copy()
         l4n_in = RiskManager.getL4Necessity(rpm, dpm, x_in, s0)
         l4n = l4n_in.copy()
-        to_solve = set([i for i in range(self.fixed_horizon, n-1) if l4n_in[i] >= self.l4n_threshold])
+        to_solve = set([i for i in range(self.fixed_horizon-1, n-1) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
-        solved = set()
         while to_solve:
             for t in to_solve:
                 if l4n[t] < self.l4n_threshold:
@@ -60,13 +59,13 @@ class SmoothingFilter(Shared):
                         if x[t] == x[t+1] and t + 1 not in to_solve:
                             unsolvable.add(t)
             l4n = RiskManager.getL4Necessity(rpm, dpm, x, s0)
-            to_solve = set([i for i in range(self.fixed_horizon, n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
+            to_solve = set([i for i in range(self.fixed_horizon-1, n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
         return x
 
     def dispatchWithNetSupply(self, pa, supply_ratio, x, a, p):
         n = len(x)
-        res = pa[:2] + [None for _ in range(2, n)]
-        for t in range(2, n):
+        res = pa[:self.fixed_horizon] + [None for _ in range(self.fixed_horizon, n)]
+        for t in range(self.fixed_horizon, n):
             res[t] = max(math.floor((x[t] * supply_ratio[a][p][t])), 0)
             if res[t] < 0:
                 print("decumulated x: ", x)

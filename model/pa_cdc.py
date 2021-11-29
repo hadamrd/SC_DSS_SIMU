@@ -52,11 +52,11 @@ class PA_CDC:
 
         for a, aff in affiliates.items():
             for p in aff.products:
-                self.supply_plan[a][p][:2] = self.prev_supply_plan[a][p][:2]
+                self.supply_plan[a][p][:self.model.fixed_horizon] = self.prev_supply_plan[a][p][:self.model.fixed_horizon]
 
         for p in self.model.products:
             self.raw_need[p][0] = self.product_supply_demand[p][0]
-            self.possible_to_promise[p][0:2] = self.total_prev_supply_plan[p][0:2]
+            self.possible_to_promise[p][0:self.model.fixed_horizon] = self.total_prev_supply_plan[p][0:self.model.fixed_horizon]
             self.product_supply_plan[p][0] = sum([self.supply_plan[a][p][0] for a, aff in affiliates.items() if p in aff.products])
             self.projected_stock[p][0] = self.initial_stock[p] + self.queued_prod[p][0] - self.product_supply_plan[p][0]
             for a, aff in affiliates.items():
@@ -69,13 +69,13 @@ class PA_CDC:
                     if p in aff.products: 
                         self.supply_ratio[a][p][t] = self.supply_demand[a][p][t] / self.raw_need[p][t] if self.raw_need[p][t] != 0 else 0
 
-                if t >= 2:
+                if t >= self.model.fixed_horizon:
                     projected_available_quantity = self.prod_plan[p][t] + self.queued_prod[p][t] + self.projected_stock[p][t-1]
                     self.possible_to_promise[p][t] = max(min(self.raw_need[p][t], projected_available_quantity), 0)
 
                 for a, aff in affiliates.items(): 
                     if p in aff.products:
-                        if t >= 2:
+                        if t >= self.model.fixed_horizon:
                             self.supply_plan[a][p][t] = max(math.floor(self.supply_ratio[a][p][t] * self.possible_to_promise[p][t]), 0)
                         
                 self.product_supply_plan[p][t] = sum([self.supply_plan[a][p][t] for a, aff in affiliates.items() if p in aff.products])
