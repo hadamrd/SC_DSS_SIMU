@@ -1,7 +1,6 @@
-input_S*.json
-output_S*.json
-snapshot_S*.json
-state_S*.json
-*_results.xlsx
-simu_result/
+sales_history/
+*/history/
+*/inputs/
+*/results/
+*_S*.json
 *.pyc

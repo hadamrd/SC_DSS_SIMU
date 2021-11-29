@@ -1,6 +1,10 @@
 {
     "horizon": 24,
-    "sales_uncertainty_model_file": "uncertainty_models/UMCPVF_I1.xlsx",
+    "real_horizon": 20,
+    "fixed_horizon": 2,
+    "l4n_threshold": 0.5,
+    "history_template": "templates/template_simu_result.xlsx",
+    "metrics_template": "templates/template_metrics.xlsx",
     "affiliate_code": {
         "001": "france",
         "002": "spain",
@@ -33,7 +37,7 @@
         "P3",
         "P4"
     ],
-    "affiliate_product": {
+    "affiliate_products": {
         "france": ["P1", "P2", "P3", "P4"],
         "spain": ["P1", "P2"],
         "chili": ["P1", "P3"],

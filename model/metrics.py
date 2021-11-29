@@ -1,8 +1,8 @@
 
-import os
 import openpyxl
-from openpyxl.cell.cell import Cell
-from history import History
+
+from model import history
+from . import History, utils
 
 
 def periodMean(Q_history: list[list[int]], t: int):
@@ -34,11 +34,9 @@ def getQMetric(Q_plan: dict, metric, size: int):
     else:
         raise Exception("Given history is of unknown type: ", type(Q_plan))
 
-def writeRow(sh, row: int, start_col: int, lis: list):
-    for t, v in enumerate(lis):
-        sh.cell(row, start_col + t).value = v
 
-def generateMetricsResult(hist: History, horizon: int, template_file: str, dst_file: str):
+def generateMetricsResult(hist: History, dst_file: str):
+    horizon = hist.real_horizon
     cum_hist = hist.getCumHistory()
     pa_nervosity = getQMetric(cum_hist.supply_plan, periodNervosity, horizon)
     pdp_nervosity = getQMetric(cum_hist.prod_plan, periodNervosity, horizon)
@@ -47,31 +45,31 @@ def generateMetricsResult(hist: History, horizon: int, template_file: str, dst_f
     pv_nervosity = getQMetric(cum_hist.sales_forcast, periodNervosity, horizon)
     unvailability_mean = getQMetric(hist.unavailability, periodMean, horizon)
 
-    wb = openpyxl.load_workbook(template_file)
+    wb = openpyxl.load_workbook(hist.metrics_template_f)
     for p in hist.products:
         sheet = wb[p]
-        writeRow(sheet, 3, 3, hist.sumOverAffiliate(pv_nervosity, p, horizon))
-        writeRow(sheet, 4, 3, hist.sumOverAffiliate(ba_nervosity, p, horizon))
-        writeRow(sheet, 5, 3, hist.sumOverAffiliate(pa_nervosity, p, horizon))
-        writeRow(sheet, 6, 3, pdp_nervosity[p])
-        writeRow(sheet, 7, 3, bp_nervosity[p])
+        utils.writeRow(sheet, 3, 3, hist.sumOverAffiliate(pv_nervosity, p, horizon))
+        utils.writeRow(sheet, 4, 3, hist.sumOverAffiliate(ba_nervosity, p, horizon))
+        utils.writeRow(sheet, 5, 3, hist.sumOverAffiliate(pa_nervosity, p, horizon))
+        utils.writeRow(sheet, 6, 3, pdp_nervosity[p])
+        utils.writeRow(sheet, 7, 3, bp_nervosity[p])
 
         curr_row = 8
 
         for a in hist.itProductAff(p):
             curr_row += 1
             sheet.cell(curr_row, 1).value = a 
-            writeRow(sheet, curr_row, 3, pv_nervosity[a][p])
-            writeRow(sheet, curr_row + 1, 3, ba_nervosity[a][p])
-            writeRow(sheet, curr_row + 2, 3, pa_nervosity[a][p])
+            utils.writeRow(sheet, curr_row, 3, pv_nervosity[a][p])
+            utils.writeRow(sheet, curr_row + 1, 3, ba_nervosity[a][p])
+            utils.writeRow(sheet, curr_row + 2, 3, pa_nervosity[a][p])
             curr_row += 3
         
         curr_row = 27
         for a in hist.itProductAff(p):
-            writeRow(sheet, curr_row, 3, unvailability_mean[a][p])
+            utils.writeRow(sheet, curr_row, 3, unvailability_mean[a][p])
             curr_row+=1
 
-        writeRow(sheet, curr_row, 3, hist.sumOverAffiliate(unvailability_mean, p, horizon))
+        utils.writeRow(sheet, curr_row, 3, hist.sumOverAffiliate(unvailability_mean, p, horizon))
     wb.save(dst_file)
 
 

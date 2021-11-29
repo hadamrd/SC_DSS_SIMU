@@ -1,6 +1,10 @@
 import re
-import matplotlib.pyplot as plt
+import json
 
+
+def writeRow(sh, row: int, start_col: int, lis: list):
+    for t, v in enumerate(lis):
+        sh.cell(row, start_col + t).value = v
 
 def accumu(lis, q0=0):
     total = q0
@@ -27,17 +31,20 @@ def affineY(a, b, x):
         return 0
 
 def readRefWeekRow(sheet, row, start_col, horizon):
-        string_ref_weeks = readSubRow(sheet, row, start_col, horizon)
-        ref_weeks = list(map(int, [re.match(".*W(\d+).*", rw).group(1) for rw in string_ref_weeks]))
-        return ref_weeks
+    string_ref_weeks = readSubRow(sheet, row, start_col, horizon)
+    ref_weeks = list(map(int, [re.match(".*W(\d+).*", rw).group(1) for rw in string_ref_weeks]))
+    return ref_weeks
 
-def plotSamples(f, min_ax, max_ax, nbr_ech):
+def generateSamples(f, min_ax, max_ax, nbr_ech):
     min_ax *= (1 - 1/10)
     max_ax *= (1 + 1/10)
     ax = linspace(min_ax, max_ax, nbr_ech)
     y = [f(x) for x in ax]
-    plt.plot(ax, y)
+    return ax, y
 
-if __name__ == "__main__":
-    pass
-    
+def replicateFile(src, dst):
+    with open(src) as fp:
+        src_d = json.load(fp)
+    with open(dst, "w") as fp:
+        json.dump(src_d, fp)
+        
