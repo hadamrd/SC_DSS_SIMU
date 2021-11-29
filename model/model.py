@@ -68,9 +68,6 @@ class Model(Shared):
     def getCDCProdDemand(self):
         return self.cbn_cdc.prod_demand
 
-    def loadPlatformOutput(self, file_path):
-        self.cdc_supply_plan = platform_interface.loadSupplyPlan(file_path, self.affiliate_code, self.horizon, self.week)
-    
     def generateNextWeekInput(self, file_path):
         data = {}
         data["prev_supply_plan"] = self.getNextSupplyPlan()
@@ -133,9 +130,6 @@ class Model(Shared):
         with open(file_name, 'w') as fp:
             json.dump(snap, fp)
         return snap
-        
-    def getPlatformInput(self, file_path):
-        platform_interface.generateInput(file_path, self)
         
     def saveCDCSupplyPlan(self, file_path):
         with open(file_path, 'w') as fp:
