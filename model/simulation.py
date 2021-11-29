@@ -37,7 +37,7 @@ class Simulation:
         self.history_folder  = f"{output_folder}/history"
         self.inputs_folder   = f"{output_folder}/inputs"
         self.results_folder  = f"{output_folder}/results"
-        self.metric_result_f = f"{self.results_folder}/metrics.xlsx"
+        self.metric_result_f = f"{self.results_folder}/{Simulation.count}_metrics.xlsx"
         self.sales_folder    = sales_folder
         self.sim_history.init(start_week, end_week)
 
