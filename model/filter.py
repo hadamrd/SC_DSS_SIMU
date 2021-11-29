@@ -24,7 +24,7 @@ class SmoothingFilter(Shared):
         x = x_in.copy()
         l4n_in = RiskManager.getL4Necessity(rpm, dpm, x_in, s0)
         l4n = l4n_in.copy()
-        to_solve = set([i for i in range(self.fixed_horizon-1, n-1) if l4n_in[i] >= self.l4n_threshold])
+        to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
         while to_solve:
             for t in to_solve:
@@ -59,7 +59,7 @@ class SmoothingFilter(Shared):
                         if x[t] == x[t+1] and t + 1 not in to_solve:
                             unsolvable.add(t)
             l4n = RiskManager.getL4Necessity(rpm, dpm, x, s0)
-            to_solve = set([i for i in range(self.fixed_horizon-1, n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
+            to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
         return x
 
     def dispatchWithNetSupply(self, pa, supply_ratio, x, a, p):
