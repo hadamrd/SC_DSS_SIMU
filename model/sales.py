@@ -67,8 +67,7 @@ class SalesManager(Shared):
             os.makedirs(dst_folder)
         utils.replicateFile(initial_sales_f, os.path.join(dst_folder, f"sales_S{start_week}.json"))
         with open(initial_sales_f) as fp:
-            initial_sales = json.load(fp)
-        sales = initial_sales
+            sales = json.load(fp)       
         for w in range(start_week + 1, end_week + 1):
             sales =  {
                 a: {

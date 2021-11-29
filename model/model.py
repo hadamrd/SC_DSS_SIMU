@@ -20,13 +20,16 @@ class Model(Shared):
         with open(file_p) as fp:
             self.sales_forcast = json.load(fp)
 
-    def loadWeekInput(self, input_file):
-        with open(input_file) as json_file:
-            inputs = json.load(json_file)
-        self.week = inputs["week"]
-        self.initial_stock = inputs["initial_stock"]
-        self.prev_prod_plan = inputs["prev_prod_plan"]
-        self.prev_supply_plan = inputs["prev_supply_plan"]
+    def loadWeekInput(self, input_file=None, input_dict=None):
+        if input_file:
+            with open(input_file) as json_file:
+                input_dict = json.load(json_file)
+        if input_dict is None:
+            raise Exception("No input file or dict given!")
+        self.week: int = input_dict["week"]
+        self.initial_stock: dict[str: int] = input_dict["initial_stock"]
+        self.prev_prod_plan: dict[str, list[int]] = input_dict["prev_prod_plan"]
+        self.prev_supply_plan: dict[str, dict[str, list[int]]] = input_dict["prev_supply_plan"]
     
     def getAffiliateSupplyDemand(self):
         return {name: a.supply_demand for name, a in self.affiliates.items()}
@@ -76,6 +79,7 @@ class Model(Shared):
         data["week"] = self.week + 1
         with open(file_path, 'w') as fp:
             json.dump(data, fp)
+        return data
 
     def runAffiliatesToCDC(self):
         self.affiliates = {name: Affiliate(name, self) for name in self.affiliate_name}
