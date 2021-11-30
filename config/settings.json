@@ -1,7 +1,7 @@
 {
     "horizon": 24,
     "real_horizon": 20,
-    "fixed_horizon": 1,
+    "fixed_horizon": 3,
     "l4n_threshold": 0.5,
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
@@ -49,5 +49,6 @@
         "chili": 300,
         "australia": 400
     },
-    "factory_capacity": [1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700]
+    "proba_pv_inf": 0.5,
+    "factory_capacity": [1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085, 1085]
 }

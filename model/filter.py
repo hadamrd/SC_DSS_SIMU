@@ -19,6 +19,17 @@ class SmoothingFilter(Shared):
         if x_out[n-1] != x_in[n-1]:
             raise Exception("Didn't conserve same total quantity!")
 
+    def findBest(self, x, alpha, t, domain: set, unsolvable: set):
+        if x[t] < alpha:
+            x[t] = min(alpha, x[t+1])
+            if x[t] == x[t+1] and t + 1 not in domain:
+                unsolvable.add(t)
+        else:
+            x[t] = max(alpha, x[t-1])
+            if x[t] == x[t-1] and t - 1 not in domain:
+                unsolvable.add(t)
+        return x[t]
+    
     def filter(self, rpm: dict[str, list[int]], dpm: dict[str, list[int]], s0: int, x_in: list[int]):
         n = len(x_in)
         x = x_in.copy()
@@ -35,32 +46,21 @@ class SmoothingFilter(Shared):
                 if d < a:
                     unsolvable.add(t) 
                     continue 
+                alpha = round(b - self.l4n_threshold * (b - a)) + 1
+                beta = round(c + self.l4n_threshold * (d - c)) - 1
                 if c >= b:
                     if x[t] < b:
-                        x_star = round(b - self.l4n_threshold * (b - a)) + 1
-                        x[t] = min(x_star, x[t+1])
-                        if x[t] == x[t+1] and t + 1 not in to_solve:
-                            unsolvable.add(t)
+                        x[t] = self.findBest(x, alpha, t, to_solve, unsolvable)
                     elif x[t] > c:
-                        x_star = round(c + self.l4n_threshold * (d - c)) - 1
-                        x[t] = max(x_star, x[t-1])
-                        if x[t] == x[t-1] and t - 1 not in to_solve:
-                            unsolvable.add(t)
+                        x[t] = self.findBest(x, beta, t, to_solve, unsolvable)
                 else:
                     x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
                     if RiskManager.l4n(a, b, c, d, x_star) >= self.l4n_threshold:
                         unsolvable.add(t)
-                    if x[t] > x_star:
-                        x[t] = max(x_star, x[t-1])
-                        if x[t] == x[t-1] and t - 1 not in to_solve:
-                            unsolvable.add(t)
-                    else:
-                        x[t] = min(x_star, x[t+1])
-                        if x[t] == x[t+1] and t + 1 not in to_solve:
-                            unsolvable.add(t)
+                    x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
             l4n = RiskManager.getL4Necessity(rpm, dpm, x, s0)
             to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
-        return x
+        return x, l4n_in, l4n
 
     def dispatchWithNetSupply(self, pa, supply_ratio, x, a, p):
         n = len(x)
@@ -103,7 +103,8 @@ class SmoothingFilter(Shared):
         n = self.real_horizon
         decum_x_tot_out = {}
         decum_x_out = {a: {p: None for p in model.affiliate_products[a]} for a in model.affiliate_name}
-
+        l4n_in_product = {}
+        l4n_out_product = {}
         for product in self.products:
             # get product inputs
             x_in = list(utils.accumu(pa[product][:n]))
@@ -116,7 +117,9 @@ class SmoothingFilter(Shared):
             params = ["a", "b", "c", "d"]
             dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
             # smoothing
-            x_out_product = self.filter(rpm, dpm, s0, x_in)
+            x_out_product, l4n_in, l4n_out = self.filter(rpm, dpm, s0, x_in)
+            l4n_in_product[product] = l4n_in
+            l4n_out_product[product] = l4n_out
             self.validateOutput(x_in, x_out_product)
             # decumlate
             decum_x_tot_out[product] = utils.diff(x_out_product) + pa[product][n:]
@@ -129,7 +132,7 @@ class SmoothingFilter(Shared):
             # print(f"affiliates that consume {product} are : {affs}")
             decum_x_out[a][p] = self.dispatchWithNetSupply(pa_aff[a][p], supply_ratio, decum_x_tot_out[p], a, p)
 
-        return decum_x_out
+        return decum_x_out, l4n_in_product, l4n_out_product
 
 
 

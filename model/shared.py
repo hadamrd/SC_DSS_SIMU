@@ -21,6 +21,7 @@ class Shared:
         self.l4n_threshold: float           = self.settings["l4n_threshold"]
         self.history_template_f: str        = self.settings["history_template"]
         self.metrics_template_f: str        = self.settings["metrics_template"]
+        self.proba_pv_inf: float            = self.settings["proba_pv_inf"]
     
     def getAffiliateCode(self, aff_name) -> str:
         for code, name in self.affiliate_code.items():

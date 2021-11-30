@@ -1,6 +1,22 @@
 from model.filter import SmoothingFilter
 from model import RiskManager, SalesManager, Simulation, simulation
 
+def printNervosity(qn, qn_star, qtype):
+    if qtype == "affiliate":
+        for p in my_simu.model.products:
+            for a in my_simu.model.itProductAff(p):
+                print(f"affiliate: {a}, product: {p}")
+                print("mean, var nervosity without platform: ", qn["mean"][a][p], qn["var"][a][p])
+                print("mean, var nervosity with platform: ", qn_star["mean"][a][p], qn_star["var"][a][p])
+                res = round(100 * (qn_star["var"][a][p] - qn["var"][a][p]) / qn["var"][a][p])
+                print(f"nervosity(wit/without) = {res}%")
+    elif qtype == "product":
+        for p in my_simu.model.products:
+            print(f"product: {p}")
+            print("mean, var nervosity without platform: ", qn["mean"][p], qn["var"][p])
+            print("mean, var nervosity with platform: ", qn_star["mean"][p], qn_star["var"][p])
+            res = round(100 * (qn_star["var"][p] - qn["var"][p]) / qn["var"][p])
+            print(f"nervosity(wit/without) = {res}")
 
 if __name__ == "__main__":
     initial_sales_f     = "config/sales_S2.json"
@@ -22,7 +38,7 @@ if __name__ == "__main__":
 
     # Run without smoothing the PA plan
     print("> Working on with smoothing filter case: ")
-    mean_var_nerv_wf = my_simu.run(
+    nervosity_ws = my_simu.run(
         initial_input_f=initial_input_f, 
         start_week=start_week, 
         end_week=end_week, 
@@ -30,11 +46,23 @@ if __name__ == "__main__":
         output_folder="with_smoothing", 
         pa_filter=smoothing_filter
     )
+    ws_hist = my_simu.sim_history
     print("*** Finished")
 
+    for w in range(my_simu.sim_history.nbr_weeks):
+        print("Week: ", w)
+        for p in my_simu.model.products:
+            print("Product: ", p)
+            print("g risk in: ", ws_hist.g_risk_in[p][w])
+            print("g risk out: ", ws_hist.g_risk_out[p][w])
+            # print("in: ", ws_hist.l4n_in[p][w])
+            # print("out: ", ws_hist.l4n_out[p][w])
+            res = -100 * (ws_hist.g_risk_in[p][w] - ws_hist.g_risk_out[p][w]) / ws_hist.g_risk_in[p][w] if ws_hist.g_risk_in[p][w] != 0 else 0
+            print(f"Delta risk({p}): {round(res, 2)}%")
+        print("-------------------------------------------------------------")
     # Run with smoothing the PA plan
     print("> Working on without smoothing filter case: ")
-    mean_var_nerv = my_simu.run(
+    nervosity = my_simu.run(
         initial_input_f=initial_input_f, 
         start_week=start_week, 
         end_week=end_week, 
@@ -42,14 +70,10 @@ if __name__ == "__main__":
         output_folder="without_smoothing",
         pa_filter=None
     )
-
-    for a, p in my_simu.model.itParams():
-        print(f"affiliate: {a}, product: {p}")
-        print("mean, var nervosity without platform: {0}\t{1}".format(mean_var_nerv["pa"]["mean"][a][p], mean_var_nerv["pa"]["var"][a][p]))
-        print("mean, var nervosity with platform: ", mean_var_nerv_wf["pa"]["mean"][a][p], mean_var_nerv_wf["pa"]["var"][a][p])
-        res = round(100 * (mean_var_nerv_wf["pa"]["var"][a][p] - mean_var_nerv["pa"]["var"][a][p]) / mean_var_nerv["pa"]["var"][a][p])
-        print(f"nervosity(wit/without) = {res}")
-
+    # print("########################## PA #############################")
+    # printNervosity(nervosity["pa"], nervosity_ws["pa"], "affiliate")
+    print("################# PA total ###########################################")
+    printNervosity(nervosity["pa_product"], nervosity_ws["pa_product"], "product")
     print("*** FINISHED")
 
     

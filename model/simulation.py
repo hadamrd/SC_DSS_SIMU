@@ -27,9 +27,11 @@ class Simulation:
             self.model.loadWeekInput(input_dict=input)
             self.model.loadSalesForcast(sales_f)
             self.model.runWeek()
+            l4n_in, l4n_out = None, None
             if smoothing_filter:
-                self.model.cdc_supply_plan = smoothing_filter.run(self.model)
-            snapshot = self.model.saveSnapShot(snapshot_f)
+                x_out, l4n_in, l4n_out = smoothing_filter.run(self.model)
+                self.model.cdc_supply_plan = x_out
+            snapshot = self.model.saveSnapShot(snapshot_f, l4n_in, l4n_out)
             self.sim_history.fillData(snapshot)
             input = self.model.generateNextWeekInput(next_input_f)
 

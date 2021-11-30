@@ -117,7 +117,7 @@ class Model(Shared):
         with open(file_name, 'w') as fp:
             json.dump(self.getCurrState, fp)
 
-    def saveSnapShot(self, file_name):
+    def saveSnapShot(self, file_name, l4n_in=None, l4n_out=None):
         snap = {
             "week": self.week,
             "supply_plan": self.getNextSupplyPlan(),
@@ -127,6 +127,10 @@ class Model(Shared):
             "sales_forcast": self.sales_forcast,
             "unavailabiliy": self.pa_cdc.unavailability
         }
+        if l4n_in:
+            snap["l4n_in"] = l4n_in
+        if l4n_out:
+            snap["l4n_out"] = l4n_out
         with open(file_name, 'w') as fp:
             json.dump(snap, fp)
         return snap
@@ -186,3 +190,16 @@ class Model(Shared):
             supply_demand[affiliate][product][week-self.week] = quantity
             i += 1
         return supply_demand
+
+
+
+    # def findBest(self, x, alpha, t, domain: set, unsolvable: set):
+    #     if x[t] < alpha:
+    #         x[t] = min(alpha, x[t+1])
+    #         if x[t] == x[t+1] and t + 1 not in domain:
+    #             unsolvable.add(t+1)
+    #     else:
+    #         x[t] = max(alpha, x[t-1])
+    #         if x[t] == x[t-1] and t - 1 not in domain:
+    #             unsolvable.add(t-1)
+    #     return x[t]

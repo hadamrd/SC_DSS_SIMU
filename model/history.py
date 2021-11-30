@@ -15,7 +15,13 @@ class History(Shared):
         self.supply_demand = None
         self.supply_plan = None
         self.prod_demand = None
+        self.pa_product = None
+        self.ba_product = None
+        self.pv_product = None
+        self.l4n_in = None
+        self.l4n_out = None
         self.unavailability = None
+
 
     def getQuantityCumHistory(self, q_history):
         nbr_weeks = len(q_history)
@@ -24,6 +30,14 @@ class History(Shared):
             Qr = Q_history[w-1][0] if w != 0 else 0
             Q_history[w] = list(utils.accumu(q_history[w], Qr))
         return Q_history
+
+    def sumCumHistOverAff(self, cumHist):
+        return {p: [[
+            sum([
+                cumHist[a][p][w][t] for a in self.itProductAff(p)
+                ]) for t in range(self.horizon)]
+                for w in range(self.nbr_weeks)]
+                for p in self.products}
 
     def getCumHistory(self):
         cum_hist = History()
@@ -44,6 +58,10 @@ class History(Shared):
         self.unavailability = {a: {p: [None] * self.nbr_weeks for p in self.affiliate_products[a]} for a in self.affiliate_name}
         self.prod_plan      = {p: [None] * self.nbr_weeks for p in self.products}
         self.prod_demand    = {p: [None] * self.nbr_weeks for p in self.products}
+        self.l4n_in = {p: [None] * self.nbr_weeks for p in self.products}
+        self.g_risk_in = {p: [None] * self.nbr_weeks for p in self.products}
+        self.l4n_out = {p: [None] * self.nbr_weeks for p in self.products}
+        self.g_risk_out = {p: [None] * self.nbr_weeks for p in self.products}
 
     def fillData(self, snapshot):
         w = snapshot["week"] - self.start_week
@@ -56,6 +74,13 @@ class History(Shared):
                     self.unavailability[a][p][w] = snapshot["unavailabiliy"][a][p]
             self.prod_plan[p][w] = snapshot["prod_plan"][p]
             self.prod_demand[p][w] = snapshot["prod_demand"][p]
+            if "l4n_in" in snapshot:
+                self.l4n_in[p][w] = snapshot["l4n_in"][p]
+                self.g_risk_in[p][w] = max(snapshot["l4n_in"][p][self.fixed_horizon-1:])
+            if "l4n_out" in snapshot:
+                self.l4n_out[p][w] = snapshot["l4n_out"][p]
+                self.g_risk_out[p][w] = max(snapshot["l4n_out"][p][self.fixed_horizon-1:])
+
 
     def load(self, history_folder):
         for file_name in os.listdir(history_folder):

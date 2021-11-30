@@ -48,20 +48,30 @@ def getMeanVarMetric(Q_metric: dict, size):
 def generateMetricsResult(hist: History, dst_file: str):
     horizon         = hist.real_horizon
     cum_hist        = hist.getCumHistory()
+
+    pa_product = hist.sumCumHistOverAff(cum_hist.supply_plan)
+    ba_product = hist.sumCumHistOverAff(cum_hist.supply_demand)
+    pv_product = hist.sumCumHistOverAff(cum_hist.sales_forcast)
+
     pa_nervosity    = getQMetric(cum_hist.supply_plan, periodNervosity, horizon)
     pdp_nervosity   = getQMetric(cum_hist.prod_plan, periodNervosity, horizon)
     bp_nervosity    = getQMetric(cum_hist.prod_demand, periodNervosity, horizon)
     ba_nervosity    = getQMetric(cum_hist.supply_demand, periodNervosity, horizon)
     pv_nervosity    = getQMetric(cum_hist.sales_forcast, periodNervosity, horizon)
+
+    pa_product_nervosity = getQMetric(pa_product, periodNervosity, horizon)
+    ba_product_nervosity = getQMetric(ba_product, periodNervosity, horizon)
+    pv_product_nervosity = getQMetric(pv_product, periodNervosity, horizon)
+
     unvailability_mean = getQMetric(hist.unavailability, periodMean, horizon)
+
     wb = openpyxl.load_workbook(hist.metrics_template_f)
     
     for p in hist.products:
         sheet = wb[p]
-        product_pa_nervosity = hist.sumOverAffiliate(pa_nervosity, p, horizon)
-        utils.writeRow(sheet, 3, 3, hist.sumOverAffiliate(pv_nervosity, p, horizon))
-        utils.writeRow(sheet, 4, 3, hist.sumOverAffiliate(ba_nervosity, p, horizon))
-        utils.writeRow(sheet, 5, 3, product_pa_nervosity)
+        utils.writeRow(sheet, 3, 3, pa_product_nervosity)
+        utils.writeRow(sheet, 4, 3, ba_product_nervosity)
+        utils.writeRow(sheet, 5, 3, pv_product_nervosity)
         utils.writeRow(sheet, 6, 3, pdp_nervosity[p])
         utils.writeRow(sheet, 7, 3, bp_nervosity[p])
         curr_row = 8
@@ -90,6 +100,12 @@ def generateMetricsResult(hist: History, dst_file: str):
     mean_var_nervosity["bv"] = {"mean": m, "var": v}
     m, v = getMeanVarMetric(bp_nervosity, horizon)
     mean_var_nervosity["bp"] = {"mean": m, "var": v}
+    m, v = getMeanVarMetric(pa_product_nervosity, horizon)
+    mean_var_nervosity["pa_product"] = {"mean": m, "var": v}
+    m, v = getMeanVarMetric(ba_product_nervosity, horizon)
+    mean_var_nervosity["ba_product"] = {"mean": m, "var": v}
+    m, v = getMeanVarMetric(pv_product_nervosity, horizon)
+    mean_var_nervosity["pv_product"] = {"mean": m, "var": v}
 
     return mean_var_nervosity
 

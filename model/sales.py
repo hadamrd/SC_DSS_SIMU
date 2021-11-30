@@ -10,8 +10,9 @@ class SalesManager(Shared):
 
     def __init__(self, umcpv_f: str) -> None:
         super().__init__()
+        self.uncertainty_model: dict = {}
         self.loadModel(umcpv_f)
-
+    
     def loadModel(self, umcpv_f):
         wb = openpyxl.load_workbook(umcpv_f)
         self.uncertainty_model = {}
@@ -30,6 +31,7 @@ class SalesManager(Shared):
         alpha = random.random()
         x1 = alpha * (b - a) + a
         x2 = d - alpha * (d - c)
+        rd = x1 if random.random() < self.proba_pv_inf else x2
         rd = random.choice([x1, x2])
         rd = round(rd / 10) * 10
         return rd
