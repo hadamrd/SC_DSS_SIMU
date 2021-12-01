@@ -129,7 +129,7 @@ def generateMetricsResult(hist: History, riskm: RiskManager, dst_file: str):
 def exportIndicatorRes(sheet, hist1, hist2, indicator, w, p, row, col):
     sheet.cell(row, col).value     = hist1[indicator][p][w]
     sheet.cell(row, col + 1).value = hist2[indicator][p][w]
-    sheet.cell(row, col + 2).value = (hist2[indicator][p][w] - hist1[indicator][p][w]) / hist2[indicator][p][w] if hist2[indicator][p][w] != 0 else 1
+    sheet.cell(row, col + 2).value = (hist2[indicator][p][w] - hist1[indicator][p][w]) / hist2[indicator][p][w] if hist2[indicator][p][w] != 0 else 0
 
 def exportToExcel(result1, result2, tmplate_f, dst_f, nbr_weeks, products):
     wb = openpyxl.load_workbook(tmplate_f)
