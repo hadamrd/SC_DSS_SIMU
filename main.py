@@ -67,14 +67,12 @@ if __name__ == "__main__":
     print("Generating metrics ... ", end="")
     risk_indicators1 = metrics.generateMetricsResult(
         hist=simu1.sim_history,
-        riskm=risk_manager,
-        dst_file=risk_indicator_f
+        riskm=risk_manager
     )
     
     risk_indicators2 = metrics.generateMetricsResult(
         hist=simu2.sim_history,
-        riskm=risk_manager,
-        dst_file=risk_indicator_f
+        riskm=risk_manager
     )
     print("Finished")
 

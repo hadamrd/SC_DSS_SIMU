@@ -130,5 +130,6 @@ class RiskManager(Shared):
     def getFrequency(self, l4p: list[float]) -> int:
         return sum([v > 0 for v in l4p[self.fixed_horizon-1:]]) / len(l4p[self.fixed_horizon-1:])
 
-    def getSeverity(self, nl4: list[float]) -> int:
-        return max(nl4[self.fixed_horizon-1:])
+    def getSeverity(self, l4n: list[float]) -> int:
+        print(self.fixed_horizon)
+        return max(l4n[self.fixed_horizon-1:])

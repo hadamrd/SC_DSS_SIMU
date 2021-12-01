@@ -29,8 +29,11 @@ class Simulation:
             self.model.loadSalesForcast(sales_f)
             self.model.runWeek()
             if smoothing_filter:
+                pa_in_filter = self.model.pa_cdc.product_supply_plan.copy()
                 self.model.cdc_supply_plan = smoothing_filter.run(self.model)
             snapshot = self.model.getSnapShot()
+            if smoothing_filter:
+                snapshot["pa_in_filter"] = pa_in_filter
             # utils.saveToFile(snapshot, snapshot_f)
             self.sim_history.fillData(snapshot)
             input = self.model.generateNextWeekInput(next_input_f)
@@ -40,7 +43,7 @@ class Simulation:
         self.inputs_folder   = f"{self.name}/inputs"
         self.results_folder  = f"{self.name}/results"
         self.sales_folder    = sales_folder
-        self.sim_history.init(start_week, end_week)
+        self.sim_history.init(start_week, end_week, pa_filter)
 
         if not os.path.exists(self.name):
             os.mkdir(self.name)

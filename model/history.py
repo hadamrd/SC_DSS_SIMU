@@ -16,11 +16,11 @@ class History(Shared):
         self.pa = None
         self.bp = None
         self.pa_product = None
+        self.pa_in_filter = None
         self.ba_product = None
         self.pv_product = None
-        self.l4n_in = None
-        self.l4n_out = None
         self.unavailability = None
+        self.with_filter = False
 
 
     def getQuantityCumHistory(self, q_history):
@@ -48,7 +48,8 @@ class History(Shared):
         cum_hist.bp  = {p: self.getQuantityCumHistory(self.bp[p]) for p in self.products}
         return cum_hist
 
-    def init(self, start_week, end_week):
+    def init(self, start_week, end_week, with_filter):
+        self.with_filter = with_filter
         self.start_week = start_week
         self.end_week = end_week
         self.nbr_weeks = self.end_week - self.start_week + 1
@@ -60,6 +61,9 @@ class History(Shared):
         self.bp  = {p: [None] * self.nbr_weeks for p in self.products}
         self.s0  = {p: [None] * self.nbr_weeks for p in self.products}
         self.pa_product  = {p: [None] * self.nbr_weeks for p in self.products}
+        if with_filter:
+            self.with_filter = True
+            self.pa_in_filter = {p: [None] * self.nbr_weeks for p in self.products}
 
     def fillData(self, snapshot: dict):
         w = snapshot["week"] - self.start_week
@@ -74,6 +78,8 @@ class History(Shared):
             self.bp[p][w] = snapshot["prod_demand"][p]
             self.s0[p][w] = snapshot["initial_stock"][p]
             self.pa_product[p][w] = snapshot["pa_product"][p]
+            if self.with_filter:
+                self.pa_in_filter[p][w] = snapshot["pa_in_filter"][p]
 
     def load(self, history_folder):
         for file_name in os.listdir(history_folder):

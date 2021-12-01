@@ -47,111 +47,87 @@ def getMeanVarMetric(Q_metric: dict, size):
         raise Exception("Given history is of unknown type: ", type(Q_metric))
     return {"mean": Q_metric_mean, "var": Q_metric_var}
 
-def generateMetricsResult(hist: History, riskm: RiskManager, dst_file: str):
+def generateMetricsResult(hist: History, riskm: RiskManager):
     fixed_horizon   = hist.fixed_horizon
     horizon         = hist.real_horizon
-    cum_hist        = hist.getCumHistory()
+    input = {"pa": hist.pa_product}
+    cpa = {p: hist.getQuantityCumHistory(hist.pa_product[p]) for p in hist.products}
+    cpa_nervousness = getQMetric(cpa, periodNervousness, horizon, fixed_horizon)
 
-    pa_product = hist.sumCumHistOverAff(cum_hist.pa)
-    ba_product = hist.sumCumHistOverAff(cum_hist.ba)
-    pv_product = hist.sumCumHistOverAff(cum_hist.pv)
-
-    pa_nervousness    = getQMetric(cum_hist.pa, periodNervousness, horizon, fixed_horizon)
-    pdp_nervousness   = getQMetric(cum_hist.pdp, periodNervousness, horizon, fixed_horizon)
-    bp_nervousness    = getQMetric(cum_hist.bp, periodNervousness, horizon, fixed_horizon)
-    ba_nervousness    = getQMetric(cum_hist.ba, periodNervousness, horizon, fixed_horizon)
-    pv_nervousness    = getQMetric(cum_hist.pv, periodNervousness, horizon, fixed_horizon)
-
-    pa_product_nervousness = getQMetric(pa_product, periodNervousness, horizon, fixed_horizon)
-    ba_product_nervousness = getQMetric(ba_product, periodNervousness, horizon, fixed_horizon)
-    pv_product_nervousness = getQMetric(pv_product, periodNervousness, horizon, fixed_horizon)
-
-    # wb = openpyxl.load_workbook(hist.metrics_template_f)
-    # for p in hist.products:
-    #     sheet = wb[p]
-    #     utils.writeRow(sheet, 3, 3, pa_product_nervousness[p])
-    #     utils.writeRow(sheet, 4, 3, ba_product_nervousness[p])
-    #     utils.writeRow(sheet, 5, 3, pv_product_nervousness[p])
-    #     utils.writeRow(sheet, 6, 3, pdp_nervousness[p])
-    #     utils.writeRow(sheet, 7, 3, bp_nervousness[p])
-    #     curr_row = 8
-    #     for a in hist.itProductAff(p):
-    #         curr_row += 1
-    #         sheet.cell(curr_row, 1).value = a 
-    #         utils.writeRow(sheet, curr_row, 3, pv_nervousness[a][p])
-    #         utils.writeRow(sheet, curr_row + 1, 3, ba_nervousness[a][p])
-    #         utils.writeRow(sheet, curr_row + 2, 3, pa_nervousness[a][p])
-    #         curr_row += 3
-    #     curr_row = 27
-    # wb.save(dst_file)
-
-    result = {}
-
-    result["nervousness"] = {
-        "pa": getMeanVarMetric(pa_nervousness, horizon),
-        "ba": getMeanVarMetric(ba_nervousness, horizon),
-        "pv": getMeanVarMetric(pv_nervousness, horizon),
-        "pa_product": getMeanVarMetric(pa_product_nervousness, horizon),
-        "ba_product": getMeanVarMetric(ba_product_nervousness, horizon),
-        "pv_product": getMeanVarMetric(pv_product_nervousness, horizon),
-        "bp": getMeanVarMetric(bp_nervousness, horizon),
-        "pdp": getMeanVarMetric(pdp_nervousness, horizon),
+    result = {"pa": {}}
+    result["pa"] = {
+        "nervousness": getMeanVarMetric(cpa_nervousness, horizon)["var"],
+        "robustness":   {p: [None] * hist.nbr_weeks for p in hist.products},
+        "frequency":    {p: [None] * hist.nbr_weeks for p in hist.products},
+        "severity":     {p: [None] * hist.nbr_weeks for p in hist.products},
+        "adaptability": {p: [None] * hist.nbr_weeks for p in hist.products}
     }
 
-    result["robustness"] = {p: [None] * hist.nbr_weeks for p in hist.products}
-    result["frequency"] = {p: [None] * hist.nbr_weeks for p in hist.products}
-    result["severity"] = {p: [None] * hist.nbr_weeks for p in hist.products}
-    result["adaptability"] = {p: [None] * hist.nbr_weeks for p in hist.products}
+    if hist.with_filter:
+        input["pa_in_filter"] = hist.pa_in_filter
+        result["pa_in_filter"] = {
+            "robustness":   {p: [None] * hist.nbr_weeks for p in hist.products},
+            "frequency":    {p: [None] * hist.nbr_weeks for p in hist.products},
+            "severity":     {p: [None] * hist.nbr_weeks for p in hist.products},
+            "adaptability": {p: [None] * hist.nbr_weeks for p in hist.products}
+        }
 
     n = hist.real_horizon
-    for p in hist.products:
-        for w in range(hist.nbr_weeks):
-            # get product inputs
-            demand = {a: {p: hist.ba[a][p][w] for p in hist.ba[a]} for a in hist.ba}
-            s0 = hist.s0[p][w]
-            x = list(utils.accumu(hist.pa_product[p][w][:n]))
-            reception = {p: hist.pdp[p][w][:n] for p in hist.pdp}
-            # calculate possibility models
-            rpm = riskm.getRpm(reception, p)
-            aff_dpm = riskm.getDpm(demand, p)
-            # get dpm / product, sum over afiiliate
-            params = ["a", "b", "c", "d"]
-            dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
-            # calculate risk indicators
-            l4p = riskm.getL4Possibility(rpm, dpm, x, s0)
-            l4n = riskm.getL4Necessity(rpm, dpm, x, s0)
-            result["robustness"][p][w] = riskm.getRobustness(l4p)
-            result["frequency"][p][w] = riskm.getFrequency(l4p)
-            result["severity"][p][w] = riskm.getSeverity(l4n)
-            result["adaptability"][p][w] = 1 - l4n[n-1]
+
+    for key, pa in input.items():
+        for p in hist.products:
+            for w in range(hist.nbr_weeks):
+                # get product inputs
+                demand = {a: {p: hist.ba[a][p][w] for p in hist.ba[a]} for a in hist.ba}
+                s0 = hist.s0[p][w]
+                reception = {p: hist.pdp[p][w][:n] for p in hist.pdp}
+                rpm     = riskm.getRpm(reception, p)
+                aff_dpm = riskm.getDpm(demand, p)
+                # get dpm / product, sum over afiiliate
+                params = ["a", "b", "c", "d"]
+                dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
+                # calculate risk indicators
+                x = list(utils.accumu(pa[p][w][:n]))
+                l4p = riskm.getL4Possibility(rpm, dpm, x, s0)
+                l4n = riskm.getL4Necessity(rpm, dpm, x, s0)
+                result[key]["robustness"][p][w] = riskm.getRobustness(l4p)
+                result[key]["frequency"][p][w]  = riskm.getFrequency(l4p)
+                result[key]["severity"][p][w] = riskm.getSeverity(l4n)
+                result[key]["adaptability"][p][w] = 1 - l4n[n-1]
     return result
 
 def exportIndicatorRes(sheet, hist1, hist2, indicator, w, p, row, col):
     sheet.cell(row, col).value     = hist1[indicator][p][w]
     sheet.cell(row, col + 1).value = hist2[indicator][p][w]
-    sheet.cell(row, col + 2).value = (hist2[indicator][p][w] - hist1[indicator][p][w]) / hist2[indicator][p][w] if hist2[indicator][p][w] != 0 else 0
 
 def exportToExcel(result1, result2, tmplate_f, dst_f, nbr_weeks, products):
     wb = openpyxl.load_workbook(tmplate_f)
     sh = wb.active
     curr_row = 3
-    col = 3
+    col = 2
     for w in range(nbr_weeks):
         for p in products:
-            exportIndicatorRes(sh, result1, result2, "robustness", w, p, curr_row, col)
-            exportIndicatorRes(sh, result1, result2, "severity", w, p, curr_row, col + 3)
-            exportIndicatorRes(sh, result1, result2, "frequency", w, p, curr_row, col + 6)
-            exportIndicatorRes(sh, result1, result2, "adaptability", w, p, curr_row, col + 9)
+            sh.cell(curr_row, col + 1).value = result2["pa"]["robustness"][p][w]
+            sh.cell(curr_row, col + 2).value = result1["pa_in_filter"]["robustness"][p][w]
+            sh.cell(curr_row, col + 3).value = result1["pa"]["robustness"][p][w]
+            
+            sh.cell(curr_row, col + 6).value = result2["pa"]["severity"][p][w]
+            sh.cell(curr_row, col + 7).value = result1["pa_in_filter"]["severity"][p][w]
+            sh.cell(curr_row, col + 8).value = result1["pa"]["severity"][p][w]
+            
+            sh.cell(curr_row, col + 11).value = result2["pa"]["frequency"][p][w]
+            sh.cell(curr_row, col + 12).value = result1["pa_in_filter"]["frequency"][p][w]
+            sh.cell(curr_row, col + 13).value = result1["pa"]["frequency"][p][w]
+            
+            sh.cell(curr_row, col + 16).value = result2["pa"]["adaptability"][p][w]
+            sh.cell(curr_row, col + 17).value = result1["pa_in_filter"]["adaptability"][p][w]
+            sh.cell(curr_row, col + 18).value = result1["pa"]["adaptability"][p][w]
             curr_row+=1
-    
     curr_row = 3
-    col = 15
+    col = 23
     for p in products:
-        sh.cell(curr_row, col).value = result1["nervousness"]["pa_product"]["var"][p]
-        sh.cell(curr_row, col + 1).value = result2["nervousness"]["pa_product"]["var"][p]
-        
-        sh.cell(curr_row, col + 2).value = round(100 * (result1["nervousness"]["pa_product"]["var"][p] - 
-        result2["nervousness"]["pa_product"]["var"][p]) / result2["nervousness"]["pa_product"]["var"][p], 3)
+        sh.cell(curr_row, col).value = result1["pa"]["nervousness"][p]
+        sh.cell(curr_row, col + 1).value = result2["pa"]["nervousness"][p]
         curr_row += 1
     wb.save(dst_f)
 
