@@ -6,17 +6,19 @@ def printNervosity(qn, qn_star, qtype):
         for p in my_simu.model.products:
             for a in my_simu.model.itProductAff(p):
                 print(f"affiliate: {a}, product: {p}")
-                print("mean, var nervosity without platform: ", qn["mean"][a][p], qn["var"][a][p])
-                print("mean, var nervosity with platform: ", qn_star["mean"][a][p], qn_star["var"][a][p])
-                res = round(100 * (qn_star["var"][a][p] - qn["var"][a][p]) / qn["var"][a][p])
-                print(f"nervosity(wit/without) = {res}%")
+                print("Nervousness S1 (mean, var) : (", round (qn["mean"][a][p], 3),round (qn["var"][a][p], 2), ")")
+                print("Nervousness S2 (mean, var) : (", round (qn_star["mean"][a][p],3), round (qn_star["var"][a][p], 2), ")")
+                res = round(100 * (qn_star["var"][a][p] - qn["var"][a][p]) / qn["var"][a][p], 1)
+                print(f"Nervousness (S1/S2) = {res}%")
     elif qtype == "product":
         for p in my_simu.model.products:
             print(f"product: {p}")
-            print("mean, var nervosity without platform: ", qn["mean"][p], qn["var"][p])
-            print("mean, var nervosity with platform: ", qn_star["mean"][p], qn_star["var"][p])
-            res = round(100 * (qn_star["var"][p] - qn["var"][p]) / qn["var"][p])
-            print(f"nervosity(wit/without) = {res}")
+            print("Nervousness S1 (mean, var) : (", round(qn["mean"][p], 3), ";" , round (qn["var"][p], 2) ,")")
+            print("Nervousness S2 (mean, var) : (", round (qn_star["mean"][p],3), ";" , round (qn_star["var"][p], 2), ")")
+            res = round(100 * (qn_star["var"][p] - qn["var"][p]) / qn["var"][p], 1)
+            print(f"Nervousness (S1/S2) = {res}%")
+            #res2 =round(100 * (qn_star["mean"][p] - qn["mean"][p]) / qn["mean"][p], 2)
+            # print(f"Nervousness mean (S1/S2) = {res2}", "%")
 
 if __name__ == "__main__":
     initial_sales_f     = "config/sales_S2.json"
@@ -56,14 +58,14 @@ if __name__ == "__main__":
     print("*** Finished")
 
     for w in range(my_simu.sim_history.nbr_weeks):
-        print("Week: ", w)
+        print("Week snapshot : ", w)
         for p in my_simu.model.products:
             print("Product: ", p)
-            print("g risk in: ", ws_hist.g_risk_in[p][w])
-            print("g risk out: ", ws_hist.g_risk_out[p][w])
+            print("G risk S1 (in) : ", round (ws_hist.g_risk_in[p][w], 3))
+            print("G risk S2 (out) : ", round (ws_hist.g_risk_out[p][w], 3))
             res = -100 * (ws_hist.g_risk_in[p][w] - ws_hist.g_risk_out[p][w]) / ws_hist.g_risk_in[p][w] if ws_hist.g_risk_in[p][w] != 0 else 0
             print(f"Delta risk({p}): {round(res, 2)}%")
-        print("-------------------------------------------------------------")
+        print("----------------")
 
     # Run with smoothing the PA plan
     print("> Working on without smoothing filter case: ")
@@ -75,11 +77,12 @@ if __name__ == "__main__":
         output_folder="without_smoothing",
         pa_filter=None
     )
-    # print("########################## PA #############################")
-    # printNervosity(nervosity["pa"], nervosity_ws["pa"], "affiliate")
+    print("########################## PA #############################")
+    printNervosity(nervosity["pa"], nervosity_ws["pa"], "affiliate")
     print("################# PA total ###########################################")
     printNervosity(nervosity["pa_product"], nervosity_ws["pa_product"], "product")
-    print("*** FINISHED")
 
+    print("*** FINISHED")
+    
     
 
