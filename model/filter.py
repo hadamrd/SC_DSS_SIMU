@@ -49,27 +49,13 @@ class SmoothingFilter(Shared):
                     continue 
                 x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
                 nl4_star = self.risk_manager.l4n(a, b, c, d, x_star)
-                if nl4_star < self.l4n_threshold:
-                    alpha = math.ceil(b - self.l4n_threshold * (b - a))
-                    beta = math.floor(c + self.l4n_threshold * (d - c))
-                    if x[t] <= alpha:
-                        print("A")
-                        x[t] = min(alpha + 1, x[t+1])
-                        if x[t] == x[t+1] and t + 1 not in to_solve:
-                            unsolvable.add(t)
-                    elif x[t] >= beta:
-                        print("B")
-                        x[t] = max(beta - 1, x[t-1])
-                        if x[t] == x[t-1] and t - 1 not in to_solve:
-                            unsolvable.add(t)
-                else:
+                if nl4_star >= self.l4n_threshold:
                     unsolvable.add(t)
-                    x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
+                x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
             l4n = self.risk_manager.getL4Necessity(rpm, dpm, x, s0)
             to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
         print("out: ", [round(v, 3) for v in l4n[self.fixed_horizon-1:]])
         print("**************************** fin algo ***********************************")
-        print(self.fixed_horizon)
         if self.risk_manager.getSeverity(l4n) > self.risk_manager.getSeverity(l4n_in):
             raise Exception("Incorrect solution")
         return x
@@ -78,7 +64,7 @@ class SmoothingFilter(Shared):
         n = len(x)
         res = pa[:self.fixed_horizon] + [None for _ in range(self.fixed_horizon, n)]
         for t in range(self.fixed_horizon, n):
-            res[t] = max(math.floor((x[t] * supply_ratio[a][p][t])), 0)
+            res[t] = max(round(((x[t]+1) * supply_ratio[a][p][t])), 0)
             if res[t] < 0:
                 print("decumulated x: ", x)
                 print("supply_ratio: ", supply_ratio[a][p])
@@ -131,20 +117,27 @@ class SmoothingFilter(Shared):
             x_out_product = self.filter(rpm, dpm, s0, x_in)
             self.validateOutput(x_in, x_out_product)
             # decumlate
-            if list(utils.accumu(utils.diff(x_out_product))) != x_out_product:
-                raise Exception("Accumu decumu != Id")
             decum_x_tot_out[p] = utils.diff(x_out_product) + pa[p][n:]
-            # print("x_out: ", x_out[product])
-            # print("decum x_out: ", decum_product_x)
-
+            # dispatch
             for a in self.itProductAff(p):
                 decum_x_out[a][p] = self.dispatchWithNetSupply(pa_aff[a][p], supply_ratio, decum_x_tot_out[p], a, p)
 
-            product_x = self.sumOverAffiliate(decum_x_out, p, self.horizon)
-            l4n_out = self.risk_manager.getL4Necessity(rpm, dpm, product_x[:n], s0)
-            l4n_in = self.risk_manager.getL4Necessity(rpm, dpm, x_in, s0)
-            if self.risk_manager.getSeverity(l4n_out) > self.risk_manager.getSeverity(l4n_in):
-                raise Exception("Dispatching led to wrong x!")
+            # # repatch
+            # decu_product_x = self.sumOverAffiliate(decum_x_out, p, self.horizon)
+            # # recumu    
+            # product_x = list(utils.accumu(decu_product_x[:n]))
+            # l4n_out = self.risk_manager.getL4Necessity(rpm, dpm, product_x, s0)
+            # l4n_in = self.risk_manager.getL4Necessity(rpm, dpm, x_in, s0)
+            # g_out = self.risk_manager.getSeverity(l4n_out)
+            # g_in = self.risk_manager.getSeverity(l4n_in)
+            # if g_out > g_in:
+            #     print([i -j for i, j in zip(decum_x_tot_out[p], decu_product_x)])
+            #     print(l4n_in)
+            #     print(l4n_out)
+            #     print(f"{g_out} > {g_in}")
+            #     tot_supply_r = self.sumOverAffiliate(supply_ratio, p , self.horizon)
+            #     print(tot_supply_r)
+            #     raise Exception("Dispatching led to wrong x!")
             
         return decum_x_out
 
