@@ -26,7 +26,15 @@ class RiskManager(Shared):
                 quantity = utils.readSubRow(sh, r, 5, self.real_horizon)
             self.d_model[aff][product][param] = quantity
             r += 1
-    
+
+    @staticmethod
+    def l1p(a, b, s0, x):
+        return utils.affineY(a + s0, b + s0, x)
+
+    @staticmethod
+    def l2p(c, d, x):
+        return 1 - utils.affineY(c, d, x)
+
     def getDpm(self, d, p) -> dict[str, dict[str, list[int]]]:
         n = self.real_horizon
         params = ["a", "b", "c", "d"]
@@ -97,6 +105,11 @@ class RiskManager(Shared):
                 return 1 - utils.affineY(a, b, x)
             elif x > x_star:
                 return utils.affineY(c, d, x)
+
+    @staticmethod
+    def getRobustness(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list, s0: int) -> list[float]:
+        rubustness = [1 - max(RiskManager.l1p(a, b, s0, xt), RiskManager.l2p(c, d, xt)) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
+        return rubustness
 
     @staticmethod
     def getL4Necessity(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list, s0: int) -> list[float]:

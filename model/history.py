@@ -62,6 +62,7 @@ class History(Shared):
         self.g_risk_in = {p: [None] * self.nbr_weeks for p in self.products}
         self.l4n_out = {p: [None] * self.nbr_weeks for p in self.products}
         self.g_risk_out = {p: [None] * self.nbr_weeks for p in self.products}
+        self.a_risk = {p: [None] * self.nbr_weeks for p in self.products}
 
     def fillData(self, snapshot):
         w = snapshot["week"] - self.start_week
@@ -77,6 +78,7 @@ class History(Shared):
             if "l4n_in" in snapshot:
                 self.l4n_in[p][w] = snapshot["l4n_in"][p]
                 self.g_risk_in[p][w] = max(snapshot["l4n_in"][p][self.fixed_horizon-1:])
+                self.a_risk[p][w] = snapshot["a_risk"][p]
             if "l4n_out" in snapshot:
                 self.l4n_out[p][w] = snapshot["l4n_out"][p]
                 self.g_risk_out[p][w] = max(snapshot["l4n_out"][p][self.fixed_horizon-1:])

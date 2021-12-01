@@ -129,6 +129,7 @@ class Model(Shared):
         }
         if l4n_in:
             snap["l4n_in"] = l4n_in
+            snap["a_risk"] = {p: 1 - l4n_in[p][-1] for p in l4n_in}
         if l4n_out:
             snap["l4n_out"] = l4n_out
         with open(file_name, 'w') as fp:

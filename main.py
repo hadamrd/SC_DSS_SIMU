@@ -34,7 +34,13 @@ if __name__ == "__main__":
 
     print("*** START")
     # Generate all sales history beforhand
-    sales_manager.generateSalesHistory(initial_sales_f, start_week, end_week, sales_folder)
+    sales_manager.generateSalesHistory(
+        initial_sales_f,
+        start_week,
+        end_week,
+        sales_folder,
+        dependency=False
+    )
 
     # Run without smoothing the PA plan
     print("> Working on with smoothing filter case: ")
@@ -55,11 +61,10 @@ if __name__ == "__main__":
             print("Product: ", p)
             print("g risk in: ", ws_hist.g_risk_in[p][w])
             print("g risk out: ", ws_hist.g_risk_out[p][w])
-            # print("in: ", ws_hist.l4n_in[p][w])
-            # print("out: ", ws_hist.l4n_out[p][w])
             res = -100 * (ws_hist.g_risk_in[p][w] - ws_hist.g_risk_out[p][w]) / ws_hist.g_risk_in[p][w] if ws_hist.g_risk_in[p][w] != 0 else 0
             print(f"Delta risk({p}): {round(res, 2)}%")
         print("-------------------------------------------------------------")
+
     # Run with smoothing the PA plan
     print("> Working on without smoothing filter case: ")
     nervosity = my_simu.run(

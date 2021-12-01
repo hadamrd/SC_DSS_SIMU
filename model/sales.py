@@ -10,6 +10,8 @@ class SalesManager(Shared):
 
     def __init__(self, umcpv_f: str) -> None:
         super().__init__()
+        self.pv_ref: list[int] = None
+        self.dependency = True
         self.uncertainty_model: dict = {}
         self.loadModel(umcpv_f)
     
@@ -40,8 +42,12 @@ class SalesManager(Shared):
         pv_range = self.affiliate_pv_range[a]
         return 10 * random.randint(0, pv_range//10)
 
-    def getRandCPV(self, a: str, prev_pv: list):
-        pv = prev_pv[1:] + [self.randPv(a)]
+    def getRandCPV(self, a: str, p:str, prev_pv: list=None):
+        if not prev_pv:
+            self.pv_ref[a][p] = self.pv_ref[a][p][1:] + [self.randPv(a)]
+            pv = self.pv_ref[a][p]
+        else:
+            pv = prev_pv[a][p][1:] + [self.randPv(a)]
         cpv = list(utils.accumu(pv))
         acpv = [0 for _ in range(self.horizon)]
         a, b, c, d, rw = self.uncertainty_model[a].values()
@@ -55,26 +61,25 @@ class SalesManager(Shared):
             acpv[t] = max(rand_cpv, acpv[t-1] if t>0 else 0)
         return acpv
             
-    def genRandSalesForcast(self, affiliate, prev_pv=None):
+    def genRandSalesForcast(self, affiliate, product, prev_pv=None):
         random.seed(datetime.datetime.now())
-        horizon = self.horizon
-        if prev_pv is None:
-            return self.randSalesForcast(affiliate)
-        rcpv = self.getRandCPV(affiliate, prev_pv)
-        pv = [rcpv[0]] + [rcpv[t] - rcpv[t-1] for t in range(1, horizon)]
+        rcpv = self.getRandCPV(affiliate, product, prev_pv)
+        pv = utils.diff(rcpv)
         return pv
     
-    def generateSalesHistory(self, initial_sales_f, start_week, end_week, dst_folder):
+    def generateSalesHistory(self, initial_sales_f, start_week, end_week, dst_folder, dependency=True):
         print("Generating sales history ... ", end="")
         if not os.path.exists(dst_folder):
             os.makedirs(dst_folder)
         utils.replicateFile(initial_sales_f, os.path.join(dst_folder, f"sales_S{start_week}.json"))
         with open(initial_sales_f) as fp:
-            sales = json.load(fp)       
+            self.pv_ref: int = json.load(fp)
+
+        sales = self.pv_ref.copy()     
         for w in range(start_week + 1, end_week + 1):
             sales =  {
                 a: {
-                    p: self.genRandSalesForcast(a, sales[a][p]) for p in aff_products
+                    p: self.genRandSalesForcast(a, p, sales if dependency else None) for p in aff_products
                 } for a, aff_products in self.affiliate_products.items()
             }
             dst_file = os.path.join(dst_folder, f"sales_S{w}.json")
