@@ -5,30 +5,31 @@ from model import history
 from . import History, utils
 
 
-def periodMean(Q_history: list[list[int]], t: int):
+def periodMean(Q_history: list[list[int]], t: int, fh: int):
     n = len(Q_history[0])
     res = 0
     for k in range(n):
         res += Q_history[t - k][k]
-    return res / n
+    return res / (n - fh + 1)
 
-def periodNervosity(Q_history: list[list[int]], t: int) -> float:
+def periodNervosity(Q_history: list[list[int]], t: int, fh: int) -> float:
     n = len(Q_history[0])
     res = 0
     for k in range(n-1):
         y = t - k
-        res += abs(Q_history[y][k] - Q_history[y-1][k+1])
-    return res / (n - 1)
+        if y < n - fh:
+            res += abs(Q_history[y][k] - Q_history[y-1][k+1])
+    return res / (n - fh)
 
-def getQMetric(Q_plan: dict, metric, size: int):
+def getQMetric(Q_plan: dict, metric, size: int, fh: int):
     if type(next(iter(Q_plan.values()))) == dict:
         return {a: {p: [
-            metric(Q_plan[a][p], t) for t in range(size - 1, 2 * size - 1)
+            metric(Q_plan[a][p], t, fh) for t in range(size - 1, 2 * size - 1)
         ]
         for p in Q_plan[a]} for a in Q_plan}
     elif type(next(iter(Q_plan.values()))) == list:
         return {p: [
-            metric(Q_plan[p], t) for t in range(size - 1, 2 * size - 1)
+            metric(Q_plan[p], t, fh) for t in range(size - 1, 2 * size - 1)
         ]
         for p in Q_plan}
     else:
@@ -46,6 +47,7 @@ def getMeanVarMetric(Q_metric: dict, size):
     return Q_metric_mean, Q_metric_var
 
 def generateMetricsResult(hist: History, dst_file: str):
+    fixed_horizon   = hist.fixed_horizon
     horizon         = hist.real_horizon
     cum_hist        = hist.getCumHistory()
 
@@ -53,17 +55,15 @@ def generateMetricsResult(hist: History, dst_file: str):
     ba_product = hist.sumCumHistOverAff(cum_hist.supply_demand)
     pv_product = hist.sumCumHistOverAff(cum_hist.sales_forcast)
 
-    pa_nervosity    = getQMetric(cum_hist.supply_plan, periodNervosity, horizon)
-    pdp_nervosity   = getQMetric(cum_hist.prod_plan, periodNervosity, horizon)
-    bp_nervosity    = getQMetric(cum_hist.prod_demand, periodNervosity, horizon)
-    ba_nervosity    = getQMetric(cum_hist.supply_demand, periodNervosity, horizon)
-    pv_nervosity    = getQMetric(cum_hist.sales_forcast, periodNervosity, horizon)
+    pa_nervosity    = getQMetric(cum_hist.supply_plan, periodNervosity, horizon, fixed_horizon)
+    pdp_nervosity   = getQMetric(cum_hist.prod_plan, periodNervosity, horizon, fixed_horizon)
+    bp_nervosity    = getQMetric(cum_hist.prod_demand, periodNervosity, horizon, fixed_horizon)
+    ba_nervosity    = getQMetric(cum_hist.supply_demand, periodNervosity, horizon, fixed_horizon)
+    pv_nervosity    = getQMetric(cum_hist.sales_forcast, periodNervosity, horizon, fixed_horizon)
 
-    pa_product_nervosity = getQMetric(pa_product, periodNervosity, horizon)
-    ba_product_nervosity = getQMetric(ba_product, periodNervosity, horizon)
-    pv_product_nervosity = getQMetric(pv_product, periodNervosity, horizon)
-
-    unvailability_mean = getQMetric(hist.unavailability, periodMean, horizon)
+    pa_product_nervosity = getQMetric(pa_product, periodNervosity, horizon, fixed_horizon)
+    ba_product_nervosity = getQMetric(ba_product, periodNervosity, horizon, fixed_horizon)
+    pv_product_nervosity = getQMetric(pv_product, periodNervosity, horizon, fixed_horizon)
 
     wb = openpyxl.load_workbook(hist.metrics_template_f)
     
@@ -83,10 +83,6 @@ def generateMetricsResult(hist: History, dst_file: str):
             utils.writeRow(sheet, curr_row + 2, 3, pa_nervosity[a][p])
             curr_row += 3
         curr_row = 27
-        for a in hist.itProductAff(p):
-            utils.writeRow(sheet, curr_row, 3, unvailability_mean[a][p])
-            curr_row+=1
-        utils.writeRow(sheet, curr_row, 3, hist.sumOverAffiliate(unvailability_mean, p, horizon))
     wb.save(dst_file)
 
     mean_var_nervosity = {}

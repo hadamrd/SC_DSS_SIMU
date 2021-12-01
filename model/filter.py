@@ -46,17 +46,21 @@ class SmoothingFilter(Shared):
                 if d < a:
                     unsolvable.add(t) 
                     continue 
-                alpha = round(b - self.l4n_threshold * (b - a)) + 1
-                beta = round(c + self.l4n_threshold * (d - c)) - 1
-                if c >= b:
-                    if x[t] < b:
-                        x[t] = self.findBest(x, alpha, t, to_solve, unsolvable)
-                    elif x[t] > c:
-                        x[t] = self.findBest(x, beta, t, to_solve, unsolvable)
+                x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
+                nl4_star = RiskManager.l4n(a, b, c, d, x_star)
+                if nl4_star < self.l4n_threshold:
+                    alpha = round(b - self.l4n_threshold * (b - a))
+                    beta = round(c + self.l4n_threshold * (d - c))
+                    if x[t] <= alpha:
+                        x[t] = min(alpha + 1, x[t+1])
+                        if x[t] == x[t+1] and t + 1 not in to_solve:
+                            unsolvable.add(t)
+                    elif x[t] >= beta:
+                        x[t] = max(beta - 1, x[t-1])
+                        if x[t] == x[t-1] and t - 1 not in to_solve:
+                            unsolvable.add(t)
                 else:
-                    x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
-                    if RiskManager.l4n(a, b, c, d, x_star) >= self.l4n_threshold:
-                        unsolvable.add(t)
+                    unsolvable.add(t)
                     x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
             l4n = RiskManager.getL4Necessity(rpm, dpm, x, s0)
             to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
