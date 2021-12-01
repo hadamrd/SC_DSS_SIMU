@@ -1,3 +1,4 @@
+from os import stat
 import openpyxl
 from . import Shared
 from . import utils
@@ -27,21 +28,12 @@ class RiskManager(Shared):
             self.d_model[aff][product][param] = quantity
             r += 1
 
-    @staticmethod
-    def l1p(a, b, s0, x):
-        return utils.affineY(a + s0, b + s0, x)
-
-    @staticmethod
-    def l2p(c, d, x):
-        return 1 - utils.affineY(c, d, x)
-
     def getDpm(self, d, p) -> dict[str, dict[str, list[int]]]:
         n = self.real_horizon
         params = ["a", "b", "c", "d"]
         dist = {a: {param: [0] * n for param in params + ["ref_week", "model_type"]} for a in d}
         for a in self.itProductAff(p):
-            Q = list(utils.accumu(d[a][p]))
-
+            Q = list(utils.accumu(d[a][p][:n]))
             for t in range(n):
                 rw_t = self.d_model[a][p]["RefWeek"][t]
                 model_type = self.d_model[a][p]["ModelType"][t] 
@@ -76,10 +68,11 @@ class RiskManager(Shared):
         }
     
     def getRpm(self, reception:list, p: str) ->  dict[str, list[int]]:
+        n = self.real_horizon
         params = ["a", "b", "c", "d"]
-        Q = list(utils.accumu(reception))
-        dist = {param: [None] * self.real_horizon for param in params}
-        for t in range(self.real_horizon):
+        Q = list(utils.accumu(reception[p][:n]))
+        dist = {param: [None] * n for param in params}
+        for t in range(n):
             rw_t = self.r_model[p]["ref_week"][t]
             model_type = self.r_model[p]["model_type"][t]
             F_t = Q[t] - Q[rw_t-2] if rw_t-2>0 else Q[t]
@@ -97,9 +90,9 @@ class RiskManager(Shared):
             return 1
         if x == c or x == b:
             return 0
-        elif c >= b:
+        if c >= b:
             return utils.affineY(c, d, x) + 1 - utils.affineY(a, b, x)
-        elif c < b:
+        if c < b:
             x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
             if x <= x_star :
                 return 1 - utils.affineY(a, b, x)
@@ -107,11 +100,35 @@ class RiskManager(Shared):
                 return utils.affineY(c, d, x)
 
     @staticmethod
-    def getRobustness(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list, s0: int) -> list[float]:
-        rubustness = [1 - max(RiskManager.l1p(a, b, s0, xt), RiskManager.l2p(c, d, xt)) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
-        return rubustness
+    def l4p(a: int, b: int, c: int, d: int, x: int) -> float:
+        if c >= b:
+            return 1
+        if x == d or x == a:
+            return 0
+        if d <= a:
+            return utils.affineY(a, b, x) + 1 - utils.affineY(c, d, x)
+        if d > a:
+            x_star = ((b - a) * d + a * (d - c)) / (b - a + d - c)
+            if x <= x_star :
+                return 1 - utils.affineY(c, d, x)
+            elif x > x_star:
+                return utils.affineY(a, b, x)
+
+    @staticmethod
+    def getL4Possibility(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list, s0: int) -> list[float]:
+        l4_possibility = [RiskManager.l4p(a, b, c + s0, d + s0, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
+        return l4_possibility
 
     @staticmethod
     def getL4Necessity(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list, s0: int) -> list[float]:
         l4_necessity = [RiskManager.l4n(a, b, c + s0, d + s0, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
         return l4_necessity
+    
+    def getRobustness(self, l4p: list[float]) -> float:
+        return min([1 - v for v in l4p[self.fixed_horizon-1:]])
+
+    def getFrequency(self, l4p: list[float]) -> int:
+        return sum(v > 0 for v in l4p[self.fixed_horizon-1:])
+
+    def getSeverity(self, nl4: list[float]) -> int:
+        return max(nl4[self.fixed_horizon-1:])

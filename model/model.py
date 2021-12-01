@@ -64,9 +64,6 @@ class Model(Shared):
             prod_plan[p] = self.prev_prod_plan[p][1:self.prod_time+1] + self.factory.prod_plan[p][1:self.horizon - self.prod_time]
             prod_plan[p] += [prod_plan[p][-1]]
         return prod_plan
-    
-    def getCDCProdDemand(self):
-        return self.cbn_cdc.prod_demand
 
     def generateNextWeekInput(self, file_path):
         data = {}
@@ -100,40 +97,24 @@ class Model(Shared):
         self.runCDCToFactory()
         self.runCDCToAffiliates()
 
-    def getCurrState(self):
-        pa = self.pa_cdc.product_supply_plan
-        initial_stock = self.pa_cdc.initial_stock
-        reception = self.getCDCReception()
-        demand = self.pa_cdc.getSupplyDemand()
-        state = {
-            "pa": pa,
-            "reception": reception,
-            "demand": demand,
-            "initial_stock": initial_stock
-        }
-        return state
-
     def saveCurrState(self, file_name):
         with open(file_name, 'w') as fp:
             json.dump(self.getCurrState, fp)
 
-    def saveSnapShot(self, file_name, l4n_in=None, l4n_out=None):
+    def getSnapShot(self):
+        pa = self.cdc_supply_plan
+        product_pa = {p: self.sumOverAffiliate(pa, p, self.horizon) for p in self.products}
         snap = {
             "week": self.week,
-            "supply_plan": self.getNextSupplyPlan(),
-            "prod_plan": self.getNextProdPlan(),
-            "supply_demand": self.getAffiliateSupplyDemand(),
-            "prod_demand": self.getCDCProdDemand(),
+            "pa": pa,
+            "pa_product": product_pa,
+            "reception": self.getCDCReception(),
+            "demand": self.pa_cdc.getSupplyDemand(),
+            "prod_demand": self.cbn_cdc.prod_demand,
             "sales_forcast": self.sales_forcast,
-            "unavailabiliy": self.pa_cdc.unavailability
+            "unavailabiliy": self.pa_cdc.unavailability,
+            "initial_stock": self.pa_cdc.initial_stock
         }
-        if l4n_in:
-            snap["l4n_in"] = l4n_in
-            snap["a_risk"] = {p: 1 - l4n_in[p][-1] for p in l4n_in}
-        if l4n_out:
-            snap["l4n_out"] = l4n_out
-        with open(file_name, 'w') as fp:
-            json.dump(snap, fp)
         return snap
         
     def saveCDCSupplyPlan(self, file_path):
@@ -191,16 +172,3 @@ class Model(Shared):
             supply_demand[affiliate][product][week-self.week] = quantity
             i += 1
         return supply_demand
-
-
-
-    # def findBest(self, x, alpha, t, domain: set, unsolvable: set):
-    #     if x[t] < alpha:
-    #         x[t] = min(alpha, x[t+1])
-    #         if x[t] == x[t+1] and t + 1 not in domain:
-    #             unsolvable.add(t+1)
-    #     else:
-    #         x[t] = max(alpha, x[t-1])
-    #         if x[t] == x[t-1] and t - 1 not in domain:
-    #             unsolvable.add(t-1)
-    #     return x[t]

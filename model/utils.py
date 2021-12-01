@@ -12,6 +12,10 @@ def accumu(lis, q0=0):
         total += v
         yield total
 
+def saveToFile(data: dict, dst_f: str):
+    with open(dst_f, 'w') as fp:
+        json.dump(data, fp)
+
 def readSubRow(sheet, row, start_col, length):
     return [sheet.cell(row, start_col + t).value for t in range(length)]
 

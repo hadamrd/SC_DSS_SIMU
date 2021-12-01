@@ -1,24 +1,23 @@
+from re import template
 from model.filter import SmoothingFilter
-from model import RiskManager, SalesManager, Simulation, simulation
+from model import RiskManager, SalesManager, Simulation, metrics
 
-def printNervosity(qn, qn_star, qtype):
+def printNervosity(simu: Simulation, qn, qn_star, qtype):
     if qtype == "affiliate":
-        for p in my_simu.model.products:
-            for a in my_simu.model.itProductAff(p):
+        for p in simu.model.products:
+            for a in simu.model.itProductAff(p):
                 print(f"affiliate: {a}, product: {p}")
                 print("Nervousness S1 (mean, var) : (", round (qn["mean"][a][p], 3),round (qn["var"][a][p], 2), ")")
                 print("Nervousness S2 (mean, var) : (", round (qn_star["mean"][a][p],3), round (qn_star["var"][a][p], 2), ")")
                 res = round(100 * (qn_star["var"][a][p] - qn["var"][a][p]) / qn["var"][a][p], 1)
                 print(f"Nervousness (S1/S2) = {res}%")
     elif qtype == "product":
-        for p in my_simu.model.products:
+        for p in simu.model.products:
             print(f"product: {p}")
             print("Nervousness S1 (mean, var) : (", round(qn["mean"][p], 3), ";" , round (qn["var"][p], 2) ,")")
             print("Nervousness S2 (mean, var) : (", round (qn_star["mean"][p],3), ";" , round (qn_star["var"][p], 2), ")")
             res = round(100 * (qn_star["var"][p] - qn["var"][p]) / qn["var"][p], 1)
             print(f"Nervousness (S1/S2) = {res}%")
-            #res2 =round(100 * (qn_star["mean"][p] - qn["mean"][p]) / qn["mean"][p], 2)
-            # print(f"Nervousness mean (S1/S2) = {res2}", "%")
 
 if __name__ == "__main__":
     initial_sales_f     = "config/sales_S2.json"
@@ -29,7 +28,6 @@ if __name__ == "__main__":
     sales_UCMF          = "uncertainty_models/UMCPVF_I1.xlsx"
     start_week          = 2
     end_week            = 42
-    my_simu             = Simulation()
     risk_manager        = RiskManager(demand_UCMF, reception_UCMF)
     smoothing_filter    = SmoothingFilter(risk_manager)
     sales_manager       = SalesManager(sales_UCMF)
@@ -40,47 +38,56 @@ if __name__ == "__main__":
         initial_sales_f,
         start_week,
         end_week,
-        sales_folder,
-        dependency=False
+        sales_folder
     )
 
     # Run without smoothing the PA plan
     print("> Working on with smoothing filter case: ")
-    nervosity_ws = my_simu.run(
+    simu1 = Simulation("simu1")
+    simu1.run(
         initial_input_f=initial_input_f, 
         start_week=start_week, 
         end_week=end_week, 
-        sales_folder=sales_folder, 
-        output_folder="with_smoothing", 
+        sales_folder=sales_folder,
         pa_filter=smoothing_filter
     )
-    ws_hist = my_simu.sim_history
     print("*** Finished")
 
-    for w in range(my_simu.sim_history.nbr_weeks):
-        print("Week snapshot : ", w)
-        for p in my_simu.model.products:
-            print("Product: ", p)
-            print("G risk S1 (in) : ", round (ws_hist.g_risk_in[p][w], 3))
-            print("G risk S2 (out) : ", round (ws_hist.g_risk_out[p][w], 3))
-            res = -100 * (ws_hist.g_risk_in[p][w] - ws_hist.g_risk_out[p][w]) / ws_hist.g_risk_in[p][w] if ws_hist.g_risk_in[p][w] != 0 else 0
-            print(f"Delta risk({p}): {round(res, 2)}%")
-        print("----------------")
-
-    # Run with smoothing the PA plan
     print("> Working on without smoothing filter case: ")
-    nervosity = my_simu.run(
+    simu2 = Simulation("simu2")
+    simu2.run(
         initial_input_f=initial_input_f, 
         start_week=start_week, 
         end_week=end_week, 
-        sales_folder=sales_folder, 
-        output_folder="without_smoothing",
+        sales_folder=sales_folder,
         pa_filter=None
     )
-    print("########################## PA #############################")
-    printNervosity(nervosity["pa"], nervosity_ws["pa"], "affiliate")
-    print("################# PA total ###########################################")
-    printNervosity(nervosity["pa_product"], nervosity_ws["pa_product"], "product")
+        
+    risk_indicator_f = f"risk_indicators.xlsx"
+    print("Generating metrics ... ", end="")
+    risk_indicators1 = metrics.generateMetricsResult(
+        hist=simu1.sim_history,
+        riskm=risk_manager,
+        dst_file=risk_indicator_f
+    )
+    
+    risk_indicators2 = metrics.generateMetricsResult(
+        hist=simu2.sim_history,
+        riskm=risk_manager,
+        dst_file=risk_indicator_f
+    )
+    print("Finished")
+
+    print("Generating indicators excel ... ", end="")
+    indicators_template_f = "templates/template_risk_indicators.xlsx"
+    indicators_f = "risk_indicators.xlsx"
+    nbr_weeks = end_week - start_week + 1
+    products = simu1.model.products
+    metrics.exportToExcel(risk_indicators1, risk_indicators2, indicators_template_f, indicators_f, nbr_weeks, products)
+    # print("########################## PA #############################")
+    # printNervosity(nervosity["pa"], risk_indicator["vervousness"]["pa"], "affiliate")
+    # print("######################## PA total #########################")
+    # printNervosity(nervosity["pa_product"], risk_indicator["vervousness"]["pa"]["pa_product"], "product")
 
     print("*** FINISHED")
     
