@@ -126,6 +126,11 @@ def generateMetricsResult(hist: History, riskm: RiskManager, dst_file: str):
             result["adaptability"][p][w] = 1 - l4n[n-1]
     return result
 
+def exportIndicatorRes(sheet, hist1, hist2, indicator, w, p, row, col):
+    sheet.cell(row, col).value     = hist1[indicator][p][w]
+    sheet.cell(row, col + 1).value = hist2[indicator][p][w]
+    sheet.cell(row, col + 2).value = (hist2[indicator][p][w] - hist1[indicator][p][w]) / hist2[indicator][p][w] if hist2[indicator][p][w] != 0 else 1
+
 def exportToExcel(result1, result2, tmplate_f, dst_f, nbr_weeks, products):
     wb = openpyxl.load_workbook(tmplate_f)
     sh = wb.active
@@ -133,21 +138,22 @@ def exportToExcel(result1, result2, tmplate_f, dst_f, nbr_weeks, products):
     col = 3
     for w in range(nbr_weeks):
         for p in products:
-            sh.cell(curr_row, col).value     = result1["robustness"][p][w]
-            sh.cell(curr_row, col + 1).value = result2["robustness"][p][w]
-
-            sh.cell(curr_row, col + 3).value     = result1["severity"][p][w]
-            sh.cell(curr_row, col + 3 + 1).value = result2["severity"][p][w]
-
-            sh.cell(curr_row, col + 6).value = result1["frequency"][p][w]
-            sh.cell(curr_row, col + 6 + 1).value = result2["frequency"][p][w]
-
-            sh.cell(curr_row, col + 9).value = result1["adaptability"][p][w]
-            sh.cell(curr_row, col + 9 + 1).value = result2["adaptability"][p][w]
+            exportIndicatorRes(sh, result1, result2, "robustness", w, p, curr_row, col)
+            exportIndicatorRes(sh, result1, result2, "severity", w, p, curr_row, col + 3)
+            exportIndicatorRes(sh, result1, result2, "frequency", w, p, curr_row, col + 6)
+            exportIndicatorRes(sh, result1, result2, "adaptability", w, p, curr_row, col + 9)
             curr_row+=1
+    
+    curr_row = 3
+    col = 15
+    for p in products:
+        sh.cell(curr_row, col).value = result1["nervousness"]["pa_product"]["var"][p]
+        sh.cell(curr_row, col + 1).value = result2["nervousness"]["pa_product"]["var"][p]
+        
+        sh.cell(curr_row, col + 2).value = round(100 * (result1["nervousness"]["pa_product"]["var"][p] - 
+        result2["nervousness"]["pa_product"]["var"][p]) / result2["nervousness"]["pa_product"]["var"][p], 3)
+        curr_row += 1
     wb.save(dst_f)
-
-
 
 
 
