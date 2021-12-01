@@ -109,7 +109,7 @@ def generateMetricsResult(hist: History, riskm: RiskManager, dst_file: str):
             # get product inputs
             demand = {a: {p: hist.ba[a][p][w] for p in hist.ba[a]} for a in hist.ba}
             s0 = hist.s0[p][w]
-            x = pa_product[p][w][:n]
+            x = list(utils.accumu(hist.pa_product[p][w][:n]))
             reception = {p: hist.pdp[p][w][:n] for p in hist.pdp}
             # calculate possibility models
             rpm = riskm.getRpm(reception, p)

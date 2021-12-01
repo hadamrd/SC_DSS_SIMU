@@ -19,13 +19,13 @@ class SmoothingFilter(Shared):
         if x_out[n-1] != x_in[n-1]:
             raise Exception("Didn't conserve same total quantity!")
 
-    def findBest(self, x, alpha, t, domain: set, unsolvable: set):
-        if x[t] < alpha:
-            x[t] = min(alpha, x[t+1])
+    def findBest(self, x, x_star, t, domain: set, unsolvable: set):
+        if x[t] < x_star:
+            x[t] = min(x_star, x[t+1])
             if x[t] == x[t+1] and t + 1 not in domain:
                 unsolvable.add(t)
         else:
-            x[t] = max(alpha, x[t-1])
+            x[t] = max(x_star, x[t-1])
             if x[t] == x[t-1] and t - 1 not in domain:
                 unsolvable.add(t)
         return x[t]
@@ -37,6 +37,8 @@ class SmoothingFilter(Shared):
         l4n = l4n_in.copy()
         to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
+        print("************************** algo **********************************")
+        print("in: ", l4n_in[self.fixed_horizon-1:])
         while to_solve:
             for t in to_solve:
                 if l4n[t] < self.l4n_threshold:
@@ -64,6 +66,8 @@ class SmoothingFilter(Shared):
                     x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
             l4n = RiskManager.getL4Necessity(rpm, dpm, x, s0)
             to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
+        print("out: ", [round(v, 3) for v in l4n[self.fixed_horizon-1:]])
+        print("**************************** fin algo ***********************************")
         return x
 
     def dispatchWithNetSupply(self, pa, supply_ratio, x, a, p):
@@ -124,7 +128,6 @@ class SmoothingFilter(Shared):
             decum_x_tot_out[product] = utils.diff(x_out_product) + pa[product][n:]
             # print("x_out: ", x_out[product])
             # print("decum x_out: ", decum_product_x)
-
         for a, p in self.itParams():
             # print("Processing product: ", product)
             # affs = [a for a in model.affiliate_name if product in model.affiliate_product[a]]
