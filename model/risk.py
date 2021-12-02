@@ -52,7 +52,7 @@ class RiskManager(Shared):
                 tr = n - 1 - t
                 if tr < n - 1:
                     dist[a]["c"][tr] = min(dist[a]["c"][tr], dist[a]["c"][tr+1])
-                    dist[a]["d"][tr] = max(dist[a]["d"][tr], dist[a]["d"][tr+1])
+                    dist[a]["d"][tr] = min(dist[a]["d"][tr], dist[a]["d"][tr+1])
         return dist
         
     def loadRModel(self, file_name: str) -> None:

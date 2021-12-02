@@ -31,6 +31,6 @@ class CBN_CDC:
         for p in self.model.products:
             for t in range(self.model.horizon):
                 prev_proj_stock = self.initial_stock[p] if t == 0 else self.projected_stock[p][t-1]
-                self.prod_demand[p][t] = max(self.prev_prod_plan[p][t], self.product_supply_demand[p][t] + self.target_stock[p][t] - prev_proj_stock - self.queued_prod[p][t])
+                self.prod_demand[p][t] = max(0, self.product_supply_demand[p][t] + self.target_stock[p][t] - prev_proj_stock - self.queued_prod[p][t])
                 self.projected_stock[p][t] = prev_proj_stock + self.prod_demand[p][t] + self.queued_prod[p][t] - self.product_supply_demand[p][t]                                     
      

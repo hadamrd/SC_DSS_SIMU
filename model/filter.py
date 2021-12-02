@@ -49,7 +49,10 @@ class SmoothingFilter(Shared):
                 if d < a:
                     unsolvable.add(t) 
                     continue 
-                x_star = round(((b - a) * c + b * (d - c)) / (b - a + d - c))
+                if (b - a + d - c)>0:
+                    x_star = round(((b - a) * c + b * (d - c)) / (b - a + d - c))
+                else:
+                    x_star = 0
                 nl4_star = self.risk_manager.l4n(a, b, c, d, x_star)
                 if nl4_star < self.l4n_threshold:
                     alpha = math.ceil(b - self.l4n_threshold * (b - a))

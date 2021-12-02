@@ -2,7 +2,7 @@
     "horizon": 24,
     "real_horizon": 20,
     "fixed_horizon": 3,
-    "l4n_threshold": 0.5,
+    "l4n_threshold": 0.1,
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
     "affiliate_code": {
@@ -23,7 +23,7 @@
         "spain": 150,
         "chili": 300,
         "australia": 350,
-        "cdc": 300
+        "cdc": 0
     },
     "affiliates": [
         "france",
@@ -49,6 +49,6 @@
         "chili": 300,
         "australia": 400
     },
-    "proba_pv_inf": 0.8,
-    "factory_capacity": [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+    "proba_pv_inf": 0.5,
+    "factory_capacity": [1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700]
 }

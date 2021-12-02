@@ -26,13 +26,13 @@ class Factory:
                 self.unavailability[p][t] = self.unavailability[p][t-1] + self.prod_demand[p][t] - self.prod_plan[p][t]
 
             for t in range(self.model.fixed_horizon, self.model.horizon):
-                raw_need = self.prod_demand[p][t] + self.unavailability[p][t - 1]
+                raw_need = max (self.prod_demand[p][t] + self.unavailability[p][t - 1], 0)
                 if self.total_net_demand[t] > self.packaging_capacity[t]:
                     demand_ratio = self.prod_demand[p][t] / self.total_net_demand[t]
                     quantity_to_produce = demand_ratio * self.packaging_capacity[t]
-                    self.prod_plan[p][t] = min(quantity_to_produce, max(raw_need, self.prev_prod_plan[p][t]))
+                    self.prod_plan[p][t] = min(quantity_to_produce, raw_need)
                 else:
-                    self.prod_plan[p][t] = max(raw_need, self.prev_prod_plan[p][t])
+                    self.prod_plan[p][t] = raw_need
                 self.prod_plan[p][t] = math.floor(self.prod_plan[p][t])
                 self.unavailability[p][t] = self.unavailability[p][t - 1] + self.prod_demand[p][t] - self.prod_plan[p][t]
             
