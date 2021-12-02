@@ -37,8 +37,10 @@ class SmoothingFilter(Shared):
         l4n = l4n_in.copy()
         to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
-        # print("in: ", l4n_in[self.fixed_horizon-1:])
+        # print("in: ", l4n_in[self.fixed_horizon-1:])c
+        c = 0
         while to_solve:
+            c+=1
             for t in to_solve:
                 if l4n[t] < self.l4n_threshold:
                     continue
@@ -47,11 +49,26 @@ class SmoothingFilter(Shared):
                 if d < a:
                     unsolvable.add(t) 
                     continue 
-                x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
+                x_star = round(((b - a) * c + b * (d - c)) / (b - a + d - c))
                 nl4_star = self.risk_manager.l4n(a, b, c, d, x_star)
-                if nl4_star >= self.l4n_threshold:
+                if nl4_star < self.l4n_threshold:
+                    alpha = math.ceil(b - self.l4n_threshold * (b - a))
+                    beta = math.floor(c + self.l4n_threshold * (d - c))
+                    print("alpha: ", alpha , "beta: ", beta, "x*: ", x_star, "x_t: ", x[t])
+                    if x[t] <= alpha:
+                        x[t] = min(alpha + 1, x[t+1])
+                        if x[t] == x[t+1] and t + 1 not in to_solve:
+                            unsolvable.add(t)
+                            continue
+                    elif x[t] >= beta:
+                        x[t] = max(beta - 1, x[t-1])
+                        if x[t] == x[t-1] and t - 1 not in to_solve:
+                            unsolvable.add(t)
+                            continue
                     unsolvable.add(t)
-                x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
+                else:
+                    unsolvable.add(t)
+                    x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
             l4n = self.risk_manager.getL4Necessity(rpm, dpm, x, s0)
             to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
         # print("out: ", [round(v, 3) for v in l4n[self.fixed_horizon-1:]])
