@@ -101,6 +101,8 @@ class SmoothingFilter(Shared):
         n = self.real_horizon
         decum_x_tot_out = {}
         decum_x_out = {a: {p: None for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        print("###########################################################")
+        print("Week: ", model.week)
         for p in self.products:
             # get product inputs
             x_in = list(utils.accumu(pa[p][:n]))
@@ -111,6 +113,13 @@ class SmoothingFilter(Shared):
             # get dpm / product, sum over afiiliate
             params = ["a", "b", "c", "d"]
             dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
+            print("              *************                         ")
+            print("Product: ", p)
+            for param, vals in dpm.items():
+                print(param, ": ", vals)
+            print("----------------------------------------")
+            for param, vals in rpm.items():
+                print(param, ": ", vals)
             # smoothing
             # print("************************** algo **********************************")
             # print("Week: ", model.week)
