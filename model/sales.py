@@ -5,7 +5,7 @@ from . import Shared
 from . import utils 
 import os
 import json 
-
+from .shared import PvRandStrat
 class SalesManager(Shared):
 
     def __init__(self, umcpv_f: str) -> None:
@@ -29,9 +29,12 @@ class SalesManager(Shared):
 
     def pickRandCPV(self, a, b, c, d):
         alpha = random.random()
-        x1 = alpha * (b - a) + a
+        x1 = a + alpha * (b - a)
         x2 = d - alpha * (d - c)
-        rd = x1 if random.random() < self.proba_pv_inf else x2
+        if self.pv_rand_strat == PvRandStrat.uniform:
+            rd = x1 if random.random() < self.proba_pv_inf else x2
+        elif self.pv_rand_strat == PvRandStrat.minmax:
+            rd = x1 + (x2 - x1) * random.random()
         rd = round(rd / 10) * 10
         return rd
 
@@ -68,12 +71,13 @@ class SalesManager(Shared):
         utils.replicateFile(initial_sales_f, os.path.join(dst_folder, f"sales_S{start_week}.json"))
         with open(initial_sales_f) as fp:
             pv_ref: dict[str, dict[str, list[int]]] = json.load(fp)
-        for w in range(start_week + 1, end_week + 1):
-            sales = {a: {p: [None] * self.horizon for p in aff_products} for a, aff_products in self.affiliate_products.items()}
-            for a in self.affiliate_name:
-                for p in self.affiliate_products[a]:        
-                    pv_ref[a][p] = pv_ref[a][p][1:] + [self.randPv(a)]
-                    sales[a][p] = self.genRandSalesForcast(self.uncertainty_model[a], pv_ref[a][p])
+        sales = pv_ref.copy()
+        for w in range(start_week + 1, end_week + 1):     
+            if self.pv_dependency:
+                pv_ref = sales 
+            for a, p in self.itParams():
+                pv_ref[a][p] = pv_ref[a][p][1:] + [self.randPv(a)]
+                sales[a][p] = self.genRandSalesForcast(self.uncertainty_model[a], pv_ref[a][p])
             dst_file = os.path.join(dst_folder, f"sales_S{w}.json")
             with open(dst_file, "w") as fp:
                 json.dump(sales, fp)

@@ -1,7 +1,9 @@
 import json
 from typing import Any, Tuple
-
-
+import enum
+class PvRandStrat(enum.Enum):
+    minmax = "minmax"
+    uniform = "uniform"
 class Shared:
     def __init__(self) -> None:
         with open("config/settings.json") as fp:
@@ -22,7 +24,9 @@ class Shared:
         self.history_template_f: str        = self.settings["history_template"]
         self.metrics_template_f: str        = self.settings["metrics_template"]
         self.proba_pv_inf: float            = self.settings["proba_pv_inf"]
-    
+        self.pv_dependency: bool            = self.settings["pv_dependency"]
+        self.pv_rand_strat: str             = PvRandStrat(self.settings["rand_pv_stat"])
+
     def getAffiliateCode(self, aff_name) -> str:
         for code, name in self.affiliate_code.items():
             if name == aff_name:

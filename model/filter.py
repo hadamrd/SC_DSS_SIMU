@@ -8,6 +8,26 @@ class SmoothingFilter(Shared):
     def __init__(self, risk_manager: RiskManager) -> None:
         super().__init__()
         self.risk_manager = risk_manager
+    
+    def dispatch(self, possible_to_promise, supply_demand, prev_supply_plan):
+        supply_plan = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        unavailability = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        supply_ratio = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+
+        for a, p in self.itParams():
+            supply_plan[a][p][:self.fixed_horizon] = prev_supply_plan[a][p][:self.fixed_horizon]
+            unavailability[a][p][0] = supply_demand[a][p][0] - supply_plan[a][p][0]
+            raw_need_a_p_0 = sum([supply_demand[a][p][0] for a in self.itProductAff(p)])
+            supply_ratio[a][p][0] = supply_demand[a][p][0] / raw_need_a_p_0 if raw_need_a_p_0 != 0 else 0
+
+        for t in range(1, self.horizon):
+            for a, p in self.itParams():
+                raw_need_a_p_t = sum([supply_demand[a][p][t] + unavailability[a][p][t-1] for a in self.itProductAff(p)])
+                supply_ratio[a][p][t] = (supply_demand[a][p][t] + unavailability[a][p][t-1]) / raw_need_a_p_t if raw_need_a_p_t != 0 else 0
+                if t >= self.fixed_horizon:
+                    supply_plan[a][p][t] = round(possible_to_promise[p][t] * supply_ratio[a][p][t])
+                unavailability[a][p][t] = unavailability[a][p][t-1] + supply_demand[a][p][t] - supply_plan[a][p][t]
+        return supply_plan, supply_ratio
 
     def validateOutput(self, x_in: list[int], x_out: list[int]):
         n = len(x_out)
@@ -67,6 +87,8 @@ class SmoothingFilter(Shared):
         n = len(x)
         res = pa[:self.fixed_horizon] + [None for _ in range(self.fixed_horizon, n)]
         for t in range(self.fixed_horizon, n):
+            if supply_ratio[a][p][t] < 0:
+                raise Exception("Negative supply ratio!")
             res[t] = max(round((x[t] * supply_ratio[a][p][t])), 0)
             if res[t] < 0:
                 print("decumulated x: ", x)
@@ -81,7 +103,7 @@ class SmoothingFilter(Shared):
         reception = data["reception"]
         demand = data["demand"]
         initial_stock = data["initial_stock"]
-        supply_ratio = model.pa_cdc.supply_ratio
+        
         n = self.real_horizon
         decum_x_tot_out = {}
         decum_x_out = {a: {p: None for p in self.affiliate_products[a]} for a in self.affiliate_name}
@@ -101,41 +123,44 @@ class SmoothingFilter(Shared):
             dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
             print("              *************                         ")
             print("Product: ", p)
+            print("Demand: ")
             for param, vals in dpm.items():
                 print(param, ": ", vals)
             print("----------------------------------------")
+            print("Reception: ")
+            print("S0: ", s0)
             for param, vals in rpm.items():
-                print(param, ": ", vals)
+                print(param, ": ", [v + s0 for v in vals])
             # smoothing
             # print("************************** algo **********************************")
 
             # print("Week: ", model.week)
             x_out_product = self.filter(rpm, dpm, s0, x_in)
             self.validateOutput(x_in, x_out_product)
-
+            
             # decumlate
             decum_x_tot_out[p] = utils.diff(x_out_product) + pa[p][n:]
 
-            # dispatch
-            for a in self.itProductAff(p):
-                decum_x_out[a][p] = self.dispatchWithNetSupply(pa_aff[a][p], supply_ratio, decum_x_tot_out[p], a, p)
+        # dispatch
+        decum_x_out, supply_ratio = self.dispatch(decum_x_tot_out, demand, pa_aff)
 
-            # # repatch
-            # decu_product_x = self.sumOverAffiliate(decum_x_out, p, self.horizon)
-            # # recumu    
-            # product_x = list(utils.accumu(decu_product_x[:n]))
-            # l4n_out = self.risk_manager.getL4Necessity(rpm, dpm, product_x, s0)
-            # l4n_in = self.risk_manager.getL4Necessity(rpm, dpm, x_in, s0)
-            # g_out = self.risk_manager.getSeverity(l4n_out)
-            # g_in = self.risk_manager.getSeverity(l4n_in)
-            # if g_out > g_in:
-            #     print([i -j for i, j in zip(decum_x_tot_out[p], decu_product_x)])
-            #     print(l4n_in)
-            #     print(l4n_out)
-            #     print(f"{g_out} > {g_in}")
-            #     tot_supply_r = self.sumOverAffiliate(supply_ratio, p , self.horizon)
-            #     print(tot_supply_r)
-            #     raise Exception("Dispatching led to wrong x!")
+        # for p in self.products:
+        #     # repatch
+        #     decu_product_x = self.sumOverAffiliate(decum_x_out, p, self.horizon)
+        #     # recumu    
+        #     product_x = list(utils.accumu(decu_product_x[:n]))
+        #     l4n_out = self.risk_manager.getL4Necessity(rpm, dpm, product_x, s0)
+        #     l4n_in = self.risk_manager.getL4Necessity(rpm, dpm, x_in, s0)
+        #     g_out = self.risk_manager.getSeverity(l4n_out)
+        #     g_in = self.risk_manager.getSeverity(l4n_in)
+        #     if g_out > g_in:
+        #         print([i -j for i, j in zip(decum_x_tot_out[p], decu_product_x)])
+        #         print(l4n_in)
+        #         print(l4n_out)
+        #         print(f"{g_out} > {g_in}")
+        #         tot_supply_r = self.sumOverAffiliate(supply_ratio, p , self.horizon)
+        #         print(tot_supply_r)
+        #         raise Exception("Dispatching led to wrong x!")
             
         return decum_x_out
 

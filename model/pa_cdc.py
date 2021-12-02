@@ -53,6 +53,7 @@ class PA_CDC:
         for a, aff in affiliates.items():
             for p in aff.products:
                 self.supply_plan[a][p][:self.model.fixed_horizon] = self.prev_supply_plan[a][p][:self.model.fixed_horizon]
+                self.unavailability[a][p][0] = self.supply_demand[a][p][0] - self.supply_plan[a][p][0]
 
         for p in self.model.products:
             self.raw_need[p][0] = self.product_supply_demand[p][0]
@@ -64,10 +65,12 @@ class PA_CDC:
                     self.supply_ratio[a][p][0] = self.supply_demand[a][p][0] / self.raw_need[p][0] if self.raw_need[p][0] != 0 else 0
 
             for t in range(1, self.model.horizon):
-                self.raw_need[p][t] = self.product_supply_demand[p][t] 
+                product_unavailability = sum([self.unavailability[a][p][t-1] for a, aff in affiliates.items() if p in aff.products])
+                self.raw_need[p][t] = self.product_supply_demand[p][t] + product_unavailability
+                
                 for a, aff in affiliates.items():
                     if p in aff.products: 
-                        self.supply_ratio[a][p][t] = self.supply_demand[a][p][t] / self.raw_need[p][t] if self.raw_need[p][t] != 0 else 0
+                        self.supply_ratio[a][p][t] = (self.supply_demand[a][p][t] + self.unavailability[a][p][t-1]) / self.raw_need[p][t] if self.raw_need[p][t] != 0 else 0
 
                 if t >= self.model.fixed_horizon:
                     projected_available_quantity = self.prod_plan[p][t] + self.queued_prod[p][t] + self.projected_stock[p][t-1]
@@ -77,6 +80,7 @@ class PA_CDC:
                     if p in aff.products:
                         if t >= self.model.fixed_horizon:
                             self.supply_plan[a][p][t] = max(math.floor(self.supply_ratio[a][p][t] * self.possible_to_promise[p][t]), 0)
-                        
+                        self.unavailability[a][p][t] = self.unavailability[a][p][t-1] + self.supply_demand[a][p][t] - self.supply_plan[a][p][t]
+                
                 self.product_supply_plan[p][t] = sum([self.supply_plan[a][p][t] for a, aff in affiliates.items() if p in aff.products])
                 self.projected_stock[p][t] = self.projected_stock[p][t-1] + self.prod_plan[p][t] + self.queued_prod[p][t] - self.product_supply_plan[p][t]

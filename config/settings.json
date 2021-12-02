@@ -3,6 +3,8 @@
     "real_horizon": 20,
     "fixed_horizon": 3,
     "l4n_threshold": 0.1,
+    "pv_dependency": true,
+    "rand_pv_stat":  "uniform",
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
     "affiliate_code": {
