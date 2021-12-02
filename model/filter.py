@@ -37,7 +37,7 @@ class SmoothingFilter(Shared):
         l4n = l4n_in.copy()
         to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
-        print("in: ", l4n_in[self.fixed_horizon-1:])
+        # print("in: ", l4n_in[self.fixed_horizon-1:])
         while to_solve:
             for t in to_solve:
                 if l4n[t] < self.l4n_threshold:
@@ -54,8 +54,8 @@ class SmoothingFilter(Shared):
                 x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
             l4n = self.risk_manager.getL4Necessity(rpm, dpm, x, s0)
             to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
-        print("out: ", [round(v, 3) for v in l4n[self.fixed_horizon-1:]])
-        print("**************************** fin algo ***********************************")
+        # print("out: ", [round(v, 3) for v in l4n[self.fixed_horizon-1:]])
+        # print("**************************** fin algo ***********************************")
         if self.risk_manager.getSeverity(l4n) > self.risk_manager.getSeverity(l4n_in):
             raise Exception("Incorrect solution")
         return x
@@ -112,8 +112,8 @@ class SmoothingFilter(Shared):
             params = ["a", "b", "c", "d"]
             dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
             # smoothing
-            print("************************** algo **********************************")
-            print("Week: ", model.week)
+            # print("************************** algo **********************************")
+            # print("Week: ", model.week)
             x_out_product = self.filter(rpm, dpm, s0, x_in)
             self.validateOutput(x_in, x_out_product)
             # decumlate
