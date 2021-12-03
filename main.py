@@ -2,22 +2,6 @@ from re import template
 from model.filter import SmoothingFilter
 from model import RiskManager, SalesManager, Simulation, metrics
 
-def printNervosity(simu: Simulation, qn, qn_star, qtype):
-    if qtype == "affiliate":
-        for p in simu.model.products:
-            for a in simu.model.itProductAff(p):
-                print(f"affiliate: {a}, product: {p}")
-                print("Nervousness S1 (mean, var) : (", round (qn["mean"][a][p], 3),round (qn["var"][a][p], 2), ")")
-                print("Nervousness S2 (mean, var) : (", round (qn_star["mean"][a][p],3), round (qn_star["var"][a][p], 2), ")")
-                res = round(100 * (qn_star["var"][a][p] - qn["var"][a][p]) / qn["var"][a][p], 1)
-                print(f"Nervousness (S1/S2) = {res}%")
-    elif qtype == "product":
-        for p in simu.model.products:
-            print(f"product: {p}")
-            print("Nervousness S1 (mean, var) : (", round(qn["mean"][p], 3), ";" , round (qn["var"][p], 2) ,")")
-            print("Nervousness S2 (mean, var) : (", round (qn_star["mean"][p],3), ";" , round (qn_star["var"][p], 2), ")")
-            res = round(100 * (qn_star["var"][p] - qn["var"][p]) / qn["var"][p], 1)
-            print(f"Nervousness (S1/S2) = {res}%")
 
 if __name__ == "__main__":
     initial_sales_f     = "config/sales_S2.json"
@@ -82,10 +66,6 @@ if __name__ == "__main__":
     nbr_weeks = end_week - start_week + 1
     products = simu1.model.products
     metrics.exportToExcel(risk_indicators1, risk_indicators2, indicators_template_f, indicators_f, nbr_weeks, products)
-    # print("########################## PA #############################")
-    # printNervosity(nervosity["pa"], risk_indicator["vervousness"]["pa"], "affiliate")
-    # print("######################## PA total #########################")
-    # printNervosity(nervosity["pa_product"], risk_indicator["vervousness"]["pa"]["pa_product"], "product")
 
     print("*** FINISHED")
     

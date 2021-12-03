@@ -78,11 +78,11 @@ class Simulation(Shared):
         )
         print("Finished")
 
-        # print("Exporting history to excel files ... ", end="")
-        # self.sim_history.exportToExcel(
-        #     prefix=Simulation.count,
-        #     results_folder=self.results_folder
-        # )
-        # print("Finished")
+        print("Exporting history to excel files ... ", end="")
+        self.sim_history.exportToExcel(
+            prefix=Simulation.count,
+            results_folder=self.results_folder
+        )
+        print("Finished")
 
         Simulation.count += 1

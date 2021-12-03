@@ -80,13 +80,13 @@ class SmoothingFilter(Shared):
 
             # calculate possibility distributions
             if self.pdp_dependency:
-                rpm = self.risk_manager.getRpm(reception_ref, p, s0)
-            else:
                 rpm = self.risk_manager.getRpm(reception, p, s0)
-            if self.ba_dependency:
-                dpm = self.risk_manager.getDpm(demand_ref, p)
             else:
+                rpm = self.risk_manager.getRpm(reception_ref, p, s0)
+            if self.ba_dependency:
                 dpm = self.risk_manager.getDpm(demand, p)
+            else:
+                dpm = self.risk_manager.getDpm(demand_ref, p)
 
             # print distributions
             print("              *************              ")
