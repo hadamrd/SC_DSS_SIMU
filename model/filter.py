@@ -79,8 +79,14 @@ class SmoothingFilter(Shared):
             s0 = initial_stock[p]
 
             # calculate possibility distributions
-            rpm = self.risk_manager.getRpm(reception_ref, p, s0)
-            dpm = self.risk_manager.getDpm(demand_ref, p)
+            if self.pdp_dependency:
+                rpm = self.risk_manager.getRpm(reception_ref, p, s0)
+            else:
+                rpm = self.risk_manager.getRpm(reception, p, s0)
+            if self.ba_dependency:
+                dpm = self.risk_manager.getDpm(demand_ref, p)
+            else:
+                dpm = self.risk_manager.getDpm(demand, p)
 
             # print distributions
             print("              *************              ")
@@ -101,7 +107,7 @@ class SmoothingFilter(Shared):
             decum_x_tot_out[p] = utils.diff(x_out_product) + pa[p][n:]
 
         # dispatch
-        decum_x_out = self.dispatch(decum_x_tot_out, demand_ref, pa_aff)
+        decum_x_out = self.dispatch(decum_x_tot_out, demand, pa_aff)
             
         return decum_x_out
 
