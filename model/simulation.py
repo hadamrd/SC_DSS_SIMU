@@ -1,14 +1,17 @@
 import json
 import os
+
+from . import Shared
 from . import metrics
 from . import utils
 from . import Model, History
 from .filter import SmoothingFilter
 
 
-class Simulation:
+class Simulation(Shared):
     count = 1
     def __init__(self, name) -> None:
+        super().__init__()
         self.model           = Model()
         self.sim_history     = History()
         self.name            = name    
@@ -19,8 +22,11 @@ class Simulation:
         self.sales_folder    = None
 
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
+        demand_ref  = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        reception_ref = {p: [None] * self.horizon for p in self.products}
         with open(os.path.join(self.inputs_folder, f"input_S{start_week}.json")) as fp:
             input = json.load(fp)
+
         for k in range(start_week, end_week + 1):
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
             # snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
@@ -29,8 +35,18 @@ class Simulation:
             self.model.loadSalesForcast(sales_f)
             self.model.runWeek()
             if smoothing_filter:
+                r = self.model.getCDCReception()
+                d = self.model.getAffiliateSupplyDemand()
+                if k == start_week:
+                    reception_ref = r
+                    demand_ref = d
+                else:
+                    for p in self.products:
+                        reception_ref[p] = reception_ref[p][1:] + [r[p][self.horizon-1]]
+                    for a, p in self.itParams():
+                        demand_ref[a][p] = demand_ref[a][p][1:] + [d[a][p][self.horizon-1]]
                 pa_in_filter = self.model.pa_cdc.product_supply_plan.copy()
-                self.model.cdc_supply_plan = smoothing_filter.run(self.model)
+                self.model.cdc_supply_plan = smoothing_filter.run(self.model, demand_ref, reception_ref)
             snapshot = self.model.getSnapShot()
             if smoothing_filter:
                 snapshot["pa_in_filter"] = pa_in_filter
@@ -62,11 +78,11 @@ class Simulation:
         )
         print("Finished")
 
-        print("Exporting history to excel files ... ", end="")
-        self.sim_history.exportToExcel(
-            prefix=Simulation.count,
-            results_folder=self.results_folder
-        )
-        print("Finished")
+        # print("Exporting history to excel files ... ", end="")
+        # self.sim_history.exportToExcel(
+        #     prefix=Simulation.count,
+        #     results_folder=self.results_folder
+        # )
+        # print("Finished")
 
         Simulation.count += 1

@@ -25,7 +25,9 @@ class Shared:
         self.metrics_template_f: str        = self.settings["metrics_template"]
         self.proba_pv_inf: float            = self.settings["proba_pv_inf"]
         self.pv_dependency: bool            = self.settings["pv_dependency"]
-        self.pv_rand_strat: str             = PvRandStrat(self.settings["rand_pv_stat"])
+        self.ba_dependency: bool            = self.settings["ba_dependency"]
+        self.pdp_dependency: bool           = self.settings["pdp_dependency"]
+        self.pv_rand_strat: PvRandStrat     = PvRandStrat(self.settings["rand_pv_stat"])
 
     def getAffiliateCode(self, aff_name) -> str:
         for code, name in self.affiliate_code.items():
@@ -44,3 +46,23 @@ class Shared:
         for a in self.affiliate_name:
             if p in self.affiliate_products[a]:
                 yield a
+    
+    def dispatch(self, capacity, demand, prev_supply):
+        supply_plan = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        unavailability = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        supply_ratio = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+
+        for a, p in self.itParams():
+            supply_plan[a][p][:self.fixed_horizon] = prev_supply[a][p][:self.fixed_horizon]
+            unavailability[a][p][0] = demand[a][p][0] - supply_plan[a][p][0]
+            raw_need_a_p_0 = sum([demand[a][p][0] for a in self.itProductAff(p)])
+            supply_ratio[a][p][0] = demand[a][p][0] / raw_need_a_p_0 if raw_need_a_p_0 != 0 else 0
+
+        for t in range(1, self.horizon):
+            for a, p in self.itParams():
+                raw_need_a_p_t = sum([demand[a][p][t] + unavailability[a][p][t-1] for a in self.itProductAff(p)])
+                supply_ratio[a][p][t] = (demand[a][p][t] + unavailability[a][p][t-1]) / raw_need_a_p_t if raw_need_a_p_t != 0 else 0
+                if t >= self.fixed_horizon:
+                    supply_plan[a][p][t] = round(capacity[p][t] * supply_ratio[a][p][t])
+                unavailability[a][p][t] = unavailability[a][p][t-1] + demand[a][p][t] - supply_plan[a][p][t]
+        return supply_plan

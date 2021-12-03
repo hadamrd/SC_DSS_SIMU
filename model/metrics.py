@@ -81,15 +81,12 @@ def generateMetricsResult(hist: History, riskm: RiskManager):
                 demand = {a: {p: hist.ba[a][p][w] for p in hist.ba[a]} for a in hist.ba}
                 s0 = hist.s0[p][w]
                 reception = {p: hist.pdp[p][w][:n] for p in hist.pdp}
-                rpm     = riskm.getRpm(reception, p)
-                aff_dpm = riskm.getDpm(demand, p)
-                # get dpm / product, sum over afiiliate
-                params = ["a", "b", "c", "d"]
-                dpm = {param: [sum([aff_dpm[a][param][t] for a in aff_dpm]) for t in range(n)] for param in params}
+                rpm     = riskm.getRpm(reception, p, s0)
+                dpm = riskm.getDpm(demand, p)
                 # calculate risk indicators
                 x = list(utils.accumu(pa[p][w][:n]))
-                l4p = riskm.getL4Possibility(rpm, dpm, x, s0)
-                l4n = riskm.getL4Necessity(rpm, dpm, x, s0)
+                l4p = riskm.getL4Possibility(rpm, dpm, x)
+                l4n = riskm.getL4Necessity(rpm, dpm, x)
                 result[key]["robustness"][p][w] = riskm.getRobustness(l4p)
                 result[key]["frequency"][p][w]  = riskm.getFrequency(l4p)
                 result[key]["severity"][p][w] = riskm.getSeverity(l4n)
