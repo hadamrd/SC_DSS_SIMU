@@ -28,6 +28,9 @@ class Shared:
         self.ba_dependency: bool            = self.settings["ba_dependency"]
         self.pdp_dependency: bool           = self.settings["pdp_dependency"]
         self.pv_rand_strat: PvRandStrat     = PvRandStrat(self.settings["rand_pv_stat"])
+        self.demand_UCMF: str               = self.settings["demand_UCMF"]
+        self.reception_UCMF: str            = self.settings["reception_UCMF"]
+        self.indicators_template_f: str     = self.settings["indicators_template_f"]
 
     def getAffiliateCode(self, aff_name) -> str:
         for code, name in self.affiliate_code.items():
@@ -47,7 +50,7 @@ class Shared:
             if p in self.affiliate_products[a]:
                 yield a
     
-    def dispatch(self, capacity, demand, prev_supply):
+    def dispatch(self, capacity, demand, prev_supply) -> dict[str, dict[str, list[int]]]:
         supply_plan = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
         unavailability = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
         supply_ratio = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}

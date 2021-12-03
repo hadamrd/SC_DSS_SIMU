@@ -102,18 +102,16 @@ class Model(Shared):
             json.dump(self.getCurrState, fp)
 
     def getSnapShot(self):
-        pa = self.cdc_supply_plan
-        product_pa = {p: self.sumOverAffiliate(pa, p, self.horizon) for p in self.products}
         snap = {
             "week": self.week,
-            "pa": pa,
-            "pa_product": product_pa,
-            "reception": self.getCDCReception(),
+            "pa_aff": self.getCDCAffSupplyPlan(),
+            "pa_product": self.getCDCProductSupplyPlan(),
             "demand": self.pa_cdc.getSupplyDemand(),
             "prod_demand": self.cbn_cdc.prod_demand,
             "sales_forcast": self.sales_forcast,
             "unavailabiliy": self.pa_cdc.unavailability,
-            "initial_stock": self.pa_cdc.initial_stock
+            "initial_stock": self.getCDCInitialStock(),
+            "metrics": {}
         }
         return snap
         
@@ -172,3 +170,22 @@ class Model(Shared):
             supply_demand[affiliate][product][week-self.week] = quantity
             i += 1
         return supply_demand
+
+    def getCDCSupplyDemand(self):
+        return self.pa_cdc.getSupplyDemand()
+    
+    def getCDCAffSupplyPlan(self):
+        return self.pa_cdc.supply_plan
+    
+    def getCDCProductSupplyPlan(self):
+        return self.pa_cdc.product_supply_plan
+    
+    def getCDCInitialStock(self):
+        return self.pa_cdc.initial_stock
+
+    def setCDCSupplyPlan(self, pa_aff, pa_product):
+        self.pa_cdc.supply_plan = pa_aff
+        self.cdc_supply_plan = pa_aff
+        self.pa_cdc.product_supply_plan = pa_product
+
+    

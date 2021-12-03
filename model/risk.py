@@ -6,11 +6,53 @@ from . import utils
 
 class RiskManager(Shared):
 
-    def __init__(self, umcd_f: str, umcr_f: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.loadDModel(umcd_f)
-        self.loadRModel(umcr_f)
-        
+        self.loadDModel(self.demand_UCMF)
+        self.loadRModel(self.reception_UCMF)
+
+    def getRiskMetrics(self, dpm, rpm, xc) -> dict[str, list[float]]:
+        res = {
+            "robustness": {p: None for p in self.products},
+            "frequency": {p: None for p in self.products},
+            "severity": {p: None for p in self.products},
+            "adaptability": {p: None for p in self.products}
+        }
+        for p in self.products:
+            l4p = self.getL4Possibility(rpm[p], dpm[p], xc[p])
+            l4n = self.getL4Necessity(rpm[p], dpm[p], xc[p])
+            res["robustness"][p]    = self.getRobustness(l4p)
+            res["frequency"][p]     = self.getFrequency(l4p)
+            res["severity"][p]      = self.getSeverity(l4n)
+            res["adaptability"][p]  = 1 - l4n[-1]
+        return res
+
+    def getDitributions(self, demand, reception, demand_ref, reception_ref, initial_stock):
+        rpm = {p: None for p in self.products}
+        dpm = {p: None for p in self.products}
+        for p in self.products:
+            s0 = initial_stock[p]
+            if self.pdp_dependency:
+                rpm[p] = self.getRpm(reception, p, s0)
+            else:
+                rpm[p] = self.getRpm(reception_ref, p, s0)
+            if self.ba_dependency:
+                dpm[p] = self.getDpm(demand, p)
+            else:
+                dpm[p] = self.getDpm(demand_ref, p)
+            # print distributions
+            print("              *************              ")
+            print("Product: ", p)
+            print("Demand: ")
+            for param, vals in dpm[p].items():
+                print(param, ": ", vals)
+            print("----------------------------------------")
+            print("Reception: ")
+            print("S0: ", s0)
+            for param, vals in rpm[p].items():
+                print(param, ": ", [v for v in vals])
+        return dpm, rpm
+
     def loadRModel(self, file_name: str) -> None:
         wb = openpyxl.load_workbook(file_name)
         sh = wb.active

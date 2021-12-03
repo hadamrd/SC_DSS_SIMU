@@ -7,13 +7,10 @@ if __name__ == "__main__":
     initial_sales_f     = "config/sales_S2.json"
     initial_input_f     = "config/input_S2.json"
     sales_folder        = "sales_history"
-    demand_UCMF         = "uncertainty_models/UMCDF_I2.xlsx"
-    reception_UCMF      = "uncertainty_models/UMCRF_I1.xlsx"
     sales_UCMF          = "uncertainty_models/UMCPVF_I1.xlsx"
     start_week          = 2
     end_week            = 42
-    risk_manager        = RiskManager(demand_UCMF, reception_UCMF)
-    smoothing_filter    = SmoothingFilter(risk_manager)
+    smoothing_filter    = SmoothingFilter()
     sales_manager       = SalesManager(sales_UCMF)
 
     print("*** START")
@@ -48,24 +45,12 @@ if __name__ == "__main__":
     )
         
     risk_indicator_f = f"risk_indicators.xlsx"
-    print("Generating metrics ... ", end="")
-    risk_indicators1 = metrics.generateMetricsResult(
-        hist=simu1.sim_history,
-        riskm=risk_manager
-    )
-    
-    risk_indicators2 = metrics.generateMetricsResult(
-        hist=simu2.sim_history,
-        riskm=risk_manager
-    )
-    print("Finished")
+
 
     print("Generating indicators excel ... ", end="")
-    indicators_template_f = "templates/template_risk_indicators.xlsx"
     indicators_f = "risk_indicators.xlsx"
     nbr_weeks = end_week - start_week + 1
-    products = simu1.model.products
-    metrics.exportToExcel(risk_indicators1, risk_indicators2, indicators_template_f, indicators_f, nbr_weeks, products)
+    metrics.exportToExcel(simu1.sim_history, simu2.sim_history, indicators_f)
 
     print("*** FINISHED")
     

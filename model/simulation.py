@@ -1,6 +1,7 @@
 import json
 import os
 
+from . import RiskManager
 from . import Shared
 from . import metrics
 from . import utils
@@ -14,6 +15,7 @@ class Simulation(Shared):
         super().__init__()
         self.model           = Model()
         self.sim_history     = History()
+        self.risk_manager    = RiskManager()
         self.name            = name    
         self.history_folder  = None
         self.inputs_folder   = None
@@ -22,34 +24,55 @@ class Simulation(Shared):
         self.sales_folder    = None
 
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
-        demand_ref  = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        reception_ref = {p: [None] * self.horizon for p in self.products}
         with open(os.path.join(self.inputs_folder, f"input_S{start_week}.json")) as fp:
             input = json.load(fp)
 
         for k in range(start_week, end_week + 1):
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
+
             # snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
             sales_f = os.path.join(self.sales_folder, f"sales_S{k}.json")
             self.model.loadWeekInput(input_dict=input)
             self.model.loadSalesForcast(sales_f)
             self.model.runWeek()
-            if smoothing_filter:
-                r = self.model.getCDCReception()
-                d = self.model.getAffiliateSupplyDemand()
-                if k == start_week:
-                    reception_ref = r
-                    demand_ref = d
-                else:
-                    for p in self.products:
-                        reception_ref[p] = reception_ref[p][1:] + [r[p][self.horizon-1]]
-                    for a, p in self.itParams():
-                        demand_ref[a][p] = demand_ref[a][p][1:] + [d[a][p][self.horizon-1]]
-                pa_in_filter = self.model.pa_cdc.product_supply_plan.copy()
-                self.model.cdc_supply_plan = smoothing_filter.run(self.model, demand_ref, reception_ref)
+            
+            # get model cdc outputs
+            reception = self.model.getCDCReception()
+            demand = self.model.getCDCSupplyDemand()
+            pa_aff = self.model.getCDCAffSupplyPlan()
+            pa_product = self.model.getCDCProductSupplyPlan()
+            initial_stock = self.model.getCDCInitialStock()
+
+            # calculate ref plans
+            if k == start_week:
+                reception_ref = reception
+                demand_ref = demand
+            else:
+                for p in self.products:
+                    reception_ref[p] = reception_ref[p][1:] + [reception[p][self.horizon-1]]
+                for a, p in self.itParams():
+                    demand_ref[a][p] = demand_ref[a][p][1:] + [demand[a][p][self.horizon-1]]
+            
+            # calculate distributions and metrics
+            dpm, rpm = self.risk_manager.getDitributions(demand, reception, demand_ref, reception_ref, initial_stock)
+            cpa_product   = {p: list(utils.accumu(pa_product[p])) for p in self.products}
             snapshot = self.model.getSnapShot()
+            snapshot["cpa_product"] = cpa_product
+            snapshot["reception"] = reception
+            snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product)
+
+            # In case their is a filter to apply
             if smoothing_filter:
-                snapshot["pa_in_filter"] = pa_in_filter
+                n = self.real_horizon
+                cpa_product_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cpa_product[p][:n]) + cpa_product[p][n:] for p in self.products}
+                pa_product_out     = {p: utils.diff(cpa_product_out[p]) for p in self.products}
+                pa_aff_out         = self.dispatch(pa_product_out, demand, pa_aff)
+                self.model.setCDCSupplyPlan(pa_aff_out, pa_product_out)
+                snapshot["cpa_product"] = cpa_product_out
+                snapshot["pa_product"]  = pa_product_out
+                snapshot["pa_aff"]      = pa_aff_out
+                snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product_out)
+
             # utils.saveToFile(snapshot, snapshot_f)
             self.sim_history.fillData(snapshot)
             input = self.model.generateNextWeekInput(next_input_f)
