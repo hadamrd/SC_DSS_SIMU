@@ -46,9 +46,9 @@ class SmoothingFilter(Shared):
                     unsolvable.add(t) 
                     continue
                 if a == b and d == c:
-                    x_star = (a + b) / 2
+                    x_star = round((a + b) / 2)
                 else:
-                    x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
+                    x_star = round(((b - a) * c + b * (d - c)) / (b - a + d - c))
                 nl4_star = RiskManager.l4n(a, b, c, d, x_star)
                 if nl4_star >= self.l4n_threshold:
                     unsolvable.add(t)

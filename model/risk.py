@@ -40,17 +40,6 @@ class RiskManager(Shared):
                 dpm[p] = self.getDpm(demand, p)
             else:
                 dpm[p] = self.getDpm(demand_ref, p)
-            # print distributions
-            print("              *************              ")
-            print("Product: ", p)
-            print("Demand: ")
-            for param, vals in dpm[p].items():
-                print(param, ": ", vals)
-            print("----------------------------------------")
-            print("Reception: ")
-            print("S0: ", s0)
-            for param, vals in rpm[p].items():
-                print(param, ": ", [v for v in vals])
         return dpm, rpm
 
     def loadRModel(self, file_name: str) -> None:

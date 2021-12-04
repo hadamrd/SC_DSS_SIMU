@@ -3,7 +3,6 @@ import os
 
 from . import RiskManager
 from . import Shared
-from . import metrics
 from . import utils
 from . import Model, History
 from .filter import SmoothingFilter
@@ -60,10 +59,10 @@ class Simulation(Shared):
             snapshot["cpa_product"] = cpa_product
             snapshot["reception"] = reception
             snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product)
+            n = self.real_horizon
 
             # In case their is a filter to apply
             if smoothing_filter:
-                n = self.real_horizon
                 cpa_product_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cpa_product[p][:n]) + cpa_product[p][n:] for p in self.products}
                 pa_product_out     = {p: utils.diff(cpa_product_out[p]) for p in self.products}
                 pa_aff_out         = self.dispatch(pa_product_out, demand, pa_aff)
@@ -72,6 +71,19 @@ class Simulation(Shared):
                 snapshot["pa_product"]  = pa_product_out
                 snapshot["pa_aff"]      = pa_aff_out
                 snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product_out)
+
+                # print distributions
+                for p in self.products:
+                    print("*********************************************************************")
+                    print("Week :", k, ", Product: ", p)
+                    print("Demand: ")
+                    print("A demand: ", [round(_) for _ in dpm[p]["a"]])
+                    print("B demand: ", [round(_) for _ in dpm[p]["b"]])
+                    print("X  in   : ", cpa_product[p][:n])
+                    print("C recept: ", [round(_) for _ in rpm[p]["c"]])
+                    print("D recept: ", [round(_) for _ in rpm[p]["d"]])
+                    print("---------------------------------------------------------------------")
+                    print("X out   : ", cpa_product_out[p][:n])
 
             # utils.saveToFile(snapshot, snapshot_f)
             self.sim_history.fillData(snapshot)
