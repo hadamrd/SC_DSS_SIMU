@@ -75,11 +75,11 @@ class Simulation(Shared):
 
                 # print distributions
                 for p in self.products:
-                    print("******************************************************************************************************************************************")
+                    print("************************************************************************************************************************************************")
                     print("Week :", k, ", Product: ", p)
                     format_row = "{:>7}" * (n - fh + 2)
                     print("          ", format_row.format("", *[f"W{t}" for t in range(k + fh - 1, k + n)]))
-                    print("------------------------------------------------------------------------------------------------------------------------------------------")
+                    print("------------------------------------------------------------------------------------------------------------------------------------------------")
                     print("A demand: ", format_row.format("", *[round(_) for _ in dpm[p]["a"][fh-1:n]]))
                     print("B demand: ", format_row.format("", *[round(_) for _ in dpm[p]["b"][fh-1:n]]))
                     print("X  in   : ", format_row.format("", *cpa_product[p][fh-1:n]))
@@ -87,7 +87,7 @@ class Simulation(Shared):
                     print("C recept: ", format_row.format("", *[round(_) for _ in rpm[p]["c"][fh-1:n]]))
                     print("D recept: ", format_row.format("", *[round(_) for _ in rpm[p]["d"][fh-1:n]]))
                     print("Unavail : ", format_row.format("", *[sum([self.model.pa_cdc.unavailability[a][p][t] for a in self.itProductAff(p)]) for t in range(fh-1, n)]))
-                    print("==========================================================================================================================================")
+                    print("================================================================================================================================================")
                     print("NL4 in  : ", format_row.format("", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product[p][:n])[fh-1:]]))
                     print("NL4 out : ", format_row.format("", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product_out[p][:n])[fh-1:]]))
 
