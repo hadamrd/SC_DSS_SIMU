@@ -1,7 +1,7 @@
 {
     "horizon": 24,
     "real_horizon": 20,
-    "fixed_horizon": 1,
+    "fixed_horizon": 3,
     "l4n_threshold": 0.5,
     "pv_dependency": false,
     "ba_dependency": false,
@@ -32,7 +32,7 @@
         "spain": 150,
         "chili": 300,
         "australia": 350,
-        "cdc": 0
+        "cdc": 1000
     },
     "affiliates": [
         "france",

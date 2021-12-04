@@ -79,7 +79,8 @@ class PA_CDC:
                 for a, aff in affiliates.items(): 
                     if p in aff.products:
                         if t >= self.model.fixed_horizon:
-                            self.supply_plan[a][p][t] = max(math.floor(self.supply_ratio[a][p][t] * self.possible_to_promise[p][t]), 0)
+                            self.supply_plan[a][p][t] = max(min(math.floor(self.supply_ratio[a][p][t] * self.possible_to_promise[p][t]), (self.unavailability[a][p][t-1] + self.supply_demand[a][p][t])), 0)
+
                         self.unavailability[a][p][t] = self.unavailability[a][p][t-1] + self.supply_demand[a][p][t] - self.supply_plan[a][p][t]
                 
                 self.product_supply_plan[p][t] = sum([self.supply_plan[a][p][t] for a, aff in affiliates.items() if p in aff.products])
