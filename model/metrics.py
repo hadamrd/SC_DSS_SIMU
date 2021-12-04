@@ -28,14 +28,13 @@ def getMeanVarMetric(Q_metric: dict, size):
     for t in range(size)]) / size) / Q_metric_mean[p]  if Q_metric_mean[p] != 0 else 0 for p in Q_metric}
     return {"mean": Q_metric_mean, "var": Q_metric_var}
 
-def exportToExcel(hist1: History, hist2: History, tmplate_f):
-    wb = openpyxl.load_workbook(tmplate_f)
+def exportToExcel(hist1: History, hist2: History, dst_f):
+    wb = openpyxl.load_workbook(hist1.indicators_template_f)
     sh = wb.active
     curr_row = 3
     col = 2
     nbr_weeks = hist1.nbr_weeks
     products = hist1.products
-    dst_f = hist1.indicators_template_f
     for w in range(nbr_weeks):
         for p in products:
             sh.cell(curr_row, col + 1).value = hist2.metrics[w]["in"]["robustness"][p]

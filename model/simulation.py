@@ -60,7 +60,7 @@ class Simulation(Shared):
             snapshot["reception"] = reception
             snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product)
             n = self.real_horizon
-
+            fh = self.fixed_horizon
             # In case their is a filter to apply
             if smoothing_filter:
                 cpa_product_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cpa_product[p][:n]) + cpa_product[p][n:] for p in self.products}
@@ -77,13 +77,15 @@ class Simulation(Shared):
                     print("*********************************************************************")
                     print("Week :", k, ", Product: ", p)
                     print("Demand: ")
-                    print("A demand: ", [round(_) for _ in dpm[p]["a"]])
-                    print("B demand: ", [round(_) for _ in dpm[p]["b"]])
+                    print("A demand: ", [round(_) for _ in dpm[p]["a"][fh-1:n]])
+                    print("B demand: ", [round(_) for _ in dpm[p]["b"][fh-1:n]])
                     print("X  in   : ", cpa_product[p][:n])
-                    print("C recept: ", [round(_) for _ in rpm[p]["c"]])
-                    print("D recept: ", [round(_) for _ in rpm[p]["d"]])
+                    print("C recept: ", [round(_) for _ in rpm[p]["c"][fh-1:n]])
+                    print("D recept: ", [round(_) for _ in rpm[p]["d"][fh-1:n]])
                     print("---------------------------------------------------------------------")
-                    print("X out   : ", cpa_product_out[p][:n])
+                    print("NL4 in  : ", self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product[p][:n])[fh-1:])
+                    print("NL4 out : ", self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product_out[p][:n])[fh-1:])
+                    print("X out   : ", cpa_product_out[p][fh-1:n])
 
             # utils.saveToFile(snapshot, snapshot_f)
             self.sim_history.fillData(snapshot)
