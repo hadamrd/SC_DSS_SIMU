@@ -38,20 +38,20 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
     for w in range(nbr_weeks):
         for p in products:
             sh.cell(curr_row, col + 1).value = hist2.metrics[w]["in"]["robustness"][p]
-            sh.cell(curr_row, col + 2).value = hist1.metrics[w]["out"]["robustness"][p]
-            sh.cell(curr_row, col + 3).value = hist1.metrics[w]["in"]["robustness"][p]
+            sh.cell(curr_row, col + 2).value = hist1.metrics[w]["in"]["robustness"][p]
+            sh.cell(curr_row, col + 3).value = hist1.metrics[w]["out"]["robustness"][p]
             
             sh.cell(curr_row, col + 6).value = hist2.metrics[w]["in"]["severity"][p]
-            sh.cell(curr_row, col + 7).value = hist1.metrics[w]["out"]["severity"][p]
-            sh.cell(curr_row, col + 8).value = hist1.metrics[w]["in"]["severity"][p]
+            sh.cell(curr_row, col + 7).value = hist1.metrics[w]["in"]["severity"][p]
+            sh.cell(curr_row, col + 8).value = hist1.metrics[w]["out"]["severity"][p]
             
             sh.cell(curr_row, col + 11).value = hist2.metrics[w]["in"]["frequency"][p]
-            sh.cell(curr_row, col + 12).value = hist1.metrics[w]["out"]["frequency"][p]
-            sh.cell(curr_row, col + 13).value = hist1.metrics[w]["in"]["frequency"][p]
+            sh.cell(curr_row, col + 12).value = hist1.metrics[w]["in"]["frequency"][p]
+            sh.cell(curr_row, col + 13).value = hist1.metrics[w]["out"]["frequency"][p]
             
             sh.cell(curr_row, col + 16).value = hist2.metrics[w]["in"]["adaptability"][p]
-            sh.cell(curr_row, col + 17).value = hist1.metrics[w]["out"]["adaptability"][p]
-            sh.cell(curr_row, col + 18).value = hist1.metrics[w]["in"]["adaptability"][p]
+            sh.cell(curr_row, col + 17).value = hist1.metrics[w]["in"]["adaptability"][p]
+            sh.cell(curr_row, col + 18).value = hist1.metrics[w]["out"]["adaptability"][p]
             curr_row+=1
     curr_row = 3
     col = 23
