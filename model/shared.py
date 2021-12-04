@@ -30,6 +30,7 @@ class Shared:
         self.pv_rand_strat: PvRandStrat     = PvRandStrat(self.settings["rand_pv_stat"])
         self.demand_UCMF: str               = self.settings["demand_UCMF"]
         self.reception_UCMF: str            = self.settings["reception_UCMF"]
+        self.sales_UCMF: str                = self.settings["sales_UCMF"]
         self.indicators_template_f: str     = self.settings["indicators_template_f"]
         self.platform_template_f: str       = self.settings["platform_template_f"]
 

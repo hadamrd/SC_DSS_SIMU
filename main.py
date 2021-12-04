@@ -6,12 +6,12 @@ from model import RiskManager, SalesManager, Simulation, metrics
 if __name__ == "__main__":
     initial_sales_f     = "config/sales_S2.json"
     initial_input_f     = "config/input_S2.json"
-    sales_folder        = "sales_history"
-    sales_UCMF          = "uncertainty_models/UMCPVF_I1.xlsx"
+    sales_folder        = "sales_history"  
+    risk_indicator_f = f"risk_indicators.xlsx"
     start_week          = 2
     end_week            = 42
     smoothing_filter    = SmoothingFilter()
-    sales_manager       = SalesManager(sales_UCMF)
+    sales_manager       = SalesManager()
 
     print("*** START")
     # Generate all sales history beforhand
@@ -43,14 +43,10 @@ if __name__ == "__main__":
         sales_folder=sales_folder,
         pa_filter=None
     )
-        
-    risk_indicator_f = f"risk_indicators.xlsx"
-
 
     print("Generating indicators excel ... ", end="")
-    indicators_f = "risk_indicators.xlsx"
     nbr_weeks = end_week - start_week + 1
-    metrics.exportToExcel(simu1.sim_history, simu2.sim_history, indicators_f)
+    metrics.exportToExcel(simu1.sim_history, simu2.sim_history, risk_indicator_f)
 
     print("*** FINISHED")
     

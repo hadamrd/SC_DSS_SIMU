@@ -9,10 +9,10 @@ from .shared import PvRandStrat
 
 class SalesManager(Shared):
 
-    def __init__(self, umcpv_f: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self.uncertainty_model: dict = {}
-        self.loadModel(umcpv_f)
+        self.loadModel(self.sales_UCMF)
     
     def loadModel(self, umcpv_f):
         wb = openpyxl.load_workbook(umcpv_f)

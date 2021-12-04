@@ -9,8 +9,9 @@
     "rand_pv_stat":  "uniform",
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
-    "demand_UCMF": "uncertainty_models/UMCDF_I2.xlsx",
+    "demand_UCMF"   :   "uncertainty_models/UMCDF_I2.xlsx",
     "reception_UCMF": "uncertainty_models/UMCRF_I1.xlsx",
+    "sales_UCMF"    : "uncertainty_models/UMCPVF_I1.xlsx",
     "indicators_template_f": "templates/template_risk_indicators.xlsx",
     "platform_template_f": "templates/template_platform_input.xlsx",
     "affiliate_code": {
