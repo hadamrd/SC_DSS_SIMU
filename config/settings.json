@@ -12,6 +12,7 @@
     "demand_UCMF": "uncertainty_models/UMCDF_I2.xlsx",
     "reception_UCMF": "uncertainty_models/UMCRF_I1.xlsx",
     "indicators_template_f": "templates/template_risk_indicators.xlsx",
+    "platform_template_f": "templates/template_platform_input.xlsx",
     "affiliate_code": {
         "001": "france",
         "002": "spain",
@@ -57,5 +58,5 @@
         "australia": 200
     },
     "proba_pv_inf": 0.5,
-    "factory_capacity": [1000, 1000, 1000, 1000, 1000, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700]
+    "factory_capacity": [2000, 2000, 2000, 2000, 2000, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700]
 }

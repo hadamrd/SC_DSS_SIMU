@@ -31,6 +31,7 @@ class Shared:
         self.demand_UCMF: str               = self.settings["demand_UCMF"]
         self.reception_UCMF: str            = self.settings["reception_UCMF"]
         self.indicators_template_f: str     = self.settings["indicators_template_f"]
+        self.platform_template_f: str       = self.settings["platform_template_f"]
 
     def getAffiliateCode(self, aff_name) -> str:
         for code, name in self.affiliate_code.items():

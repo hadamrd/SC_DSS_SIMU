@@ -120,14 +120,13 @@ class Model(Shared):
             json.dump(self.cdc_supply_plan, fp)
 
     def exportDataToExcel(self, dst_f):
-        wb = openpyxl.load_workbook("templates/template_platform_input.xlsx")
+        wb = openpyxl.load_workbook(self.platform_template_f)
         sheet = wb.active
         sheet.cell(2, 2).value = f"W{self.week}/20"
-        cdc_prod_plan = self.pa_cdc.getProdPlan()
-        cdc_supply_demand = self.pa_cdc.getSupplyDemand()
-        cdc_queued_prod = self.pa_cdc.getQueuedProd()
-        cdc_initial_stock = self.cbn_cdc.initial_stock
-        cdc_prev_supply_plan = self.cdc_supply_plan
+        cdc_supply_demand = self.getCDCSupplyDemand()
+        cdc_reception = self.getCDCReception()
+        cdc_initial_stock = self.getCDCInitialStock()
+        cdc_prev_supply_plan = self.getCDCAffSupplyPlan()
         offset = 0
         # header week before
         sheet.cell(4, 8).value = f"W{self.week-1}/20"
@@ -140,7 +139,7 @@ class Model(Shared):
             sheet.cell(product_block_start_row + 1, 8).value = cdc_initial_stock[p]
             for t in range(self.horizon):
                 # programmed_reception Factory -> CDC (pdp + queued)
-                sheet.cell(product_block_start_row, 9 + t).value = cdc_prod_plan[p][t] + cdc_queued_prod[p][t]
+                sheet.cell(product_block_start_row, 9 + t).value = cdc_reception[p][t]
                 j = 0
                 for a in self.affiliates.values():
                     if p in a.products:
@@ -182,6 +181,9 @@ class Model(Shared):
     
     def getCDCInitialStock(self):
         return self.pa_cdc.initial_stock
+
+    def getCDCProdPlan(self):
+        return self.pa_cdc.getProdPlan()
 
     def setCDCSupplyPlan(self, pa_aff, pa_product):
         self.pa_cdc.supply_plan = pa_aff

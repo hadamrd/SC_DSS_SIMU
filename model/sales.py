@@ -6,6 +6,7 @@ from . import utils
 import os
 import json 
 from .shared import PvRandStrat
+
 class SalesManager(Shared):
 
     def __init__(self, umcpv_f: str) -> None:
