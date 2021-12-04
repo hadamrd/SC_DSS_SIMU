@@ -38,8 +38,6 @@ class SmoothingFilter(Shared):
         unsolvable = set()
         while to_solve:
             for t in to_solve:
-                if l4n[t] < self.l4n_threshold:
-                    continue
                 c, d = rpm["c"][t], rpm["d"][t] 
                 a, b = dpm["a"][t], dpm["b"][t]
                 if d <= a:
