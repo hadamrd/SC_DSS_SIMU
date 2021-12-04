@@ -13,14 +13,13 @@ def periodMean(Q_history: list[list[int]], t: int, fh: int):
         res += Q_history[t - k][k]
     return res / (n - fh + 1)
 
-def getMeanAbsDiff(Q_history: list[list[int]], t: int, fh: int, p: str) -> float:
-    n = len(Q_history[0])
+def getMeanAbsDiff(Q_history: list[dict[str, list[int]]], t: int, fh: int, h: int, p: str) -> float:
     res = 0
-    for k in range(n-1):
+    for k in range(h-1):
         y = t - k
-        if y < n - fh:
-            res += abs(Q_history[y][p][k] - Q_history[y-1][p][k+1])
-    return res / (n - fh)
+        if y < h - fh:
+            res += abs(Q_history[y][p][k] - Q_history[y-1][p][k+1] + Q_history[y-1][p][0])
+    return res / (h - fh)
 
 def getMeanVarMetric(Q_metric: dict, size):
     Q_metric_mean   = {p: sum(Q_metric[p]) / size for p in Q_metric}
@@ -57,8 +56,9 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
     col = 23
     n = hist1.horizon
     fh = hist1.fixed_horizon
-    cpa1_metric = {p: [getMeanAbsDiff(hist1.cpa_product, t, fh, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
-    cpa2_metric = {p: [getMeanAbsDiff(hist2.cpa_product, t, fh, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
+    cpa1_metric = {p: [getMeanAbsDiff(hist1.cpa_product, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
+    cpa2_metric = {p: [getMeanAbsDiff(hist2.cpa_product, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
+    
     cpa1_var = getMeanVarMetric(cpa1_metric, n)
     cpa2_var = getMeanVarMetric(cpa2_metric, n)
     for p in products:
