@@ -61,6 +61,7 @@ class Simulation(Shared):
             snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product)
             n = self.real_horizon
             fh = self.fixed_horizon
+
             # In case their is a filter to apply
             if smoothing_filter:
                 cpa_product_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cpa_product[p][:n]) + cpa_product[p][n:] for p in self.products}
@@ -80,6 +81,7 @@ class Simulation(Shared):
                     print("A demand: ", [round(_) for _ in dpm[p]["a"][fh-1:n]])
                     print("B demand: ", [round(_) for _ in dpm[p]["b"][fh-1:n]])
                     print("X  in   : ", cpa_product[p][:n])
+                    print("Unavail : ", [sum([self.model.pa_cdc.unavailability[a][p][t] for a in self.itProductAff(p)]) for t in range(fh-1, n)])
                     print("C recept: ", [round(_) for _ in rpm[p]["c"][fh-1:n]])
                     print("D recept: ", [round(_) for _ in rpm[p]["d"][fh-1:n]])
                     print("---------------------------------------------------------------------")
