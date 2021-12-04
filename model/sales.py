@@ -31,9 +31,9 @@ class SalesManager(Shared):
         alpha = random.random()
         x1 = a + alpha * (b - a)
         x2 = d - alpha * (d - c)
-        if self.pv_rand_strat == PvRandStrat.uniform:
+        if self.pv_rand_strat == PvRandStrat.minmax:
             rd = x1 if random.random() < self.proba_pv_inf else x2
-        elif self.pv_rand_strat == PvRandStrat.minmax:
+        elif self.pv_rand_strat == PvRandStrat.uniform:
             rd = x1 + (x2 - x1) * random.random()
         rd = round(rd / 10) * 10
         return rd
