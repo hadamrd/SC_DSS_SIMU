@@ -65,6 +65,7 @@ class History(Shared):
             os.mkdir(results_folder)
 
         wb = openpyxl.load_workbook(self.history_template_f)
+
         for p in self.products:
             dst_file = os.path.join(results_folder, f"{prefix}_{p}_history.xlsx")
             for w in range(self.nbr_weeks):

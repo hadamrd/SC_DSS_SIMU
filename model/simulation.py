@@ -44,8 +44,8 @@ class Simulation(Shared):
 
             # calculate ref plans
             if k == start_week:
-                reception_ref = reception
-                demand_ref = demand
+                reception_ref = reception.copy()
+                demand_ref = demand.copy()
             else:
                 for p in self.products:
                     reception_ref[p] = reception_ref[p][1:] + [reception[p][self.horizon-1]]

@@ -12,7 +12,7 @@ class Model(Shared):
         self.sales_forcast = None
     
     def getCDCReception(self):
-        cdc_prod_plan = self.pa_cdc.getProdPlan()
+        cdc_prod_plan = self.getCDCProdPlan()
         cdc_queued_prod = self.pa_cdc.getQueuedProd()
         return {p: [cdc_prod_plan[p][t] + cdc_queued_prod[p][t] for t in range(self.horizon)] for p in self.products}
 
