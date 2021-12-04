@@ -18,17 +18,6 @@ class SmoothingFilter(Shared):
         if x_out[n-1] != x_in[n-1]:
             raise Exception("Didn't conserve same total quantity!")
 
-    def findBest(self, x, x_star, t, domain: set, unsolvable: set):
-        if x[t] < x_star:
-            x[t] = min(x_star, x[t+1])
-            if x[t] == x[t+1] and t + 1 not in domain:
-                unsolvable.add(t)
-        else:
-            x[t] = max(x_star, x[t-1])
-            if x[t] == x[t-1] and t - 1 not in domain:
-                unsolvable.add(t)
-        return x[t]
-
     def smooth(self, rpm: dict[str, list[int]], dpm: dict[str, list[int]], x_in: list[int]):
         n = len(x_in)
         x = x_in.copy()
@@ -50,7 +39,17 @@ class SmoothingFilter(Shared):
                 nl4_star = RiskManager.l4n(a, b, c, d, x_star)
                 if nl4_star >= self.l4n_threshold:
                     unsolvable.add(t)
-                x[t] = self.findBest(x, x_star, t, to_solve, unsolvable)
+
+                if x[t] < x_star:
+                    x[t] = min(x_star, x[t+1])
+                    if x[t] == x[t+1] and t + 1 not in to_solve:
+                        unsolvable.add(t)
+
+                else:
+                    x[t] = max(x_star, x[t-1]) if t-1 >= 0 else x_star
+                    if x[t] == x[t-1] and t - 1 not in to_solve:
+                        unsolvable.add(t)
+
             l4n = RiskManager.getL4Necessity(rpm, dpm, x)
             to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n-1) if l4n[i] >= self.l4n_threshold]) - unsolvable
         self.validateOutput(x_in, x)

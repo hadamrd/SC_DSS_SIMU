@@ -1,7 +1,7 @@
 {
     "horizon": 24,
     "real_horizon": 20,
-    "fixed_horizon": 3,
+    "fixed_horizon": 1,
     "l4n_threshold": 0.5,
     "pv_dependency": false,
     "ba_dependency": false,
