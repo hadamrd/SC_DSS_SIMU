@@ -8,9 +8,10 @@ class Affiliate(Shared):
         self.initial_stock = {p: [None for _ in range(self.horizon)] for p in self.products}
         self.delivery_time = self.delivery_time[self.name]
         self.target_stock = {p: [self.target_stock[self.name]] * self.horizon for p in self.products}
-        self.demand = {p: [None for _ in range(self.horizon)] for p in self.products}
+        
         
     def run(self, sales_forcast, prev_supply):
+        self.demand = {p: [None for _ in range(self.horizon)] for p in self.products}
         for p in self.products:
             stock_proj = self.initial_stock[p]
             for t in range(self.horizon):

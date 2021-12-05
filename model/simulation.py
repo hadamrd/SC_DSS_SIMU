@@ -6,6 +6,7 @@ from . import Shared
 from . import utils
 from . import Model, History
 from .filter import SmoothingFilter
+import copy
 
 
 class Simulation(Shared):
@@ -28,7 +29,7 @@ class Simulation(Shared):
             if os.path.exists(log_f):
                 open(log_f.format(p), 'w').close()
 
-    def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, demand, reception):      
+    def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception):      
         n = self.real_horizon
         fh = self.fixed_horizon          
         nchars = 16 + 7 * (n - fh + 1)
@@ -69,7 +70,6 @@ class Simulation(Shared):
 
         for k in range(start_week, end_week + 1):
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
-
             # snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
 
             sales_f = os.path.join(self.sales_folder, f"sales_S{k}.json")
@@ -80,12 +80,6 @@ class Simulation(Shared):
             # get model cdc outputs
             reception = self.model.cdc_reception
             demand = self.model.cdc_demand
-            
-            if k == start_week:
-                print(self.model.cdc_product_demand["P1"])
-                        
-            if all(demand[a][p][t]==0 for t in range(self.horizon) for a,p in self.itParams()):
-                raise
 
             supply = self.model.cdc_supply
             product_supply = self.model.cdc_product_supply
@@ -94,7 +88,7 @@ class Simulation(Shared):
             # calculate ref plans
             if k == start_week:
                 reception_ref = reception.copy()
-                demand_ref = demand.copy()
+                demand_ref = copy.deepcopy(demand)
             else:
                 for p in self.products:
                     reception_ref[p] = reception_ref[p][1:] + [reception[p][self.horizon-1]]
@@ -103,10 +97,17 @@ class Simulation(Shared):
             
             # calculate distributions and metrics
             dpm, rpm = self.risk_manager.getDitributions(demand, reception, demand_ref, reception_ref, initial_stock)
+
+            # # cumulate supply plan
             cproduct_supply   = {p: list(utils.accumu(product_supply[p])) for p in self.products}
+            
+            # # Create data snapshot
             snapshot = self.model.getSnapShot()
             snapshot["cproduct_supply"] = cproduct_supply
+            snapshot["demand"] = demand
             snapshot["reception"] = reception
+
+            # gather metrics
             snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply)
             n = self.real_horizon
 
@@ -122,10 +123,14 @@ class Simulation(Shared):
                 snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply_out)
 
                 # log simulation state 
-                self.log_state(k, dpm, rpm, cproduct_supply, cproduct_supply_out, demand, reception)
+                self.log_state(k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception)
 
             # utils.saveToFile(snapshot, snapshot_f)
+
+            # add data to history 
             self.sim_history.fillData(snapshot)
+
+            # generate next week inputs
             input = self.model.generateNextWeekInput(next_input_f)
 
     def run(self, initial_input_f, start_week, end_week, sales_folder, pa_filter=None):
