@@ -180,7 +180,7 @@ class Model(Shared):
 
     def getCDCReception(self):
         if self.week % 4 == 1:
-            return self.factory.production
+            return {p: self.prev_production[p][:self.prod_time] + self.factory.production[p][:self.horizon-self.prod_time] for p in self.products}
         else:
             return self.prev_production
 
