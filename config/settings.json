@@ -22,6 +22,12 @@
         "australia": 350,
         "cdc": 300
     },
+    "smoothing": {
+        "range": {
+            "start": 2,
+            "end": 19
+        }
+    },
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
     "demand_UCMF"   :   "uncertainty_models/UMCDF_I2.xlsx",

@@ -7,6 +7,7 @@ class SmoothingFilter(Shared):
 
     def __init__(self) -> None:
         super().__init__()
+        self.params = self.settings["smoothing"]
 
     def validateOutput(self, x_in: list[int], x_out: list[int]):
         n = len(x_out)
@@ -23,7 +24,7 @@ class SmoothingFilter(Shared):
         x = x_in.copy()
         l4n_in = RiskManager.getL4Necessity(rpm, dpm, x_in)
         l4n = l4n_in.copy()
-        to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n) if l4n_in[i] >= self.l4n_threshold])
+        to_solve = set([i for i in range(self.params["range"]["start"], self.params["range"]["end"]) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
         while to_solve:
             for t in to_solve:
@@ -54,6 +55,6 @@ class SmoothingFilter(Shared):
                         unsolvable.add(t)
 
             l4n = RiskManager.getL4Necessity(rpm, dpm, x)
-            to_solve = set([i for i in range(max(self.fixed_horizon-1,0), n) if l4n[i] >= self.l4n_threshold]) - unsolvable
+            to_solve = set([i for i in range(self.params["range"]["start"], self.params["range"]["end"]) if l4n[i] >= self.l4n_threshold]) - unsolvable
         self.validateOutput(x_in, x)
         return x
