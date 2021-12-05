@@ -1,6 +1,6 @@
 import json
 import os
-
+import sys
 from . import RiskManager
 from . import Shared
 from . import utils
@@ -22,7 +22,41 @@ class Simulation(Shared):
         self.metric_result_f = None
         self.sales_folder    = None
 
+    def flushLogs(self):
+        for p in self.products:
+            log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
+            if os.path.exists(log_f):
+                open(log_f.format(p), 'w').close()
+
+    def log_state(self, k, dpm, rpm, cpa_product, cpa_product_out):      
+        n = self.real_horizon
+        fh = self.fixed_horizon          
+        nspaces = 9
+        format_row = "{:>9}" * (n - fh + 2)
+        original_stdout = sys.stdout # Save a reference to the original standard output
+        for p in self.products:
+            log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
+            with open(log_f.format(p), 'a') as fp:
+                sys.stdout = fp
+                print("*" * nspaces * (n - fh + 2))
+                print("Week :", k, ", Product: ", p, "\n")
+                print(format_row.format("week", *[f"W{t}" for t in range(k + fh - 1, k + n)]))
+                print("-" * nspaces * (n - fh + 2))
+                print(format_row.format("A demand", *[round(_) for _ in dpm[p]["a"][fh-1:n]]))
+                print(format_row.format("B demand", *[round(_) for _ in dpm[p]["b"][fh-1:n]]))
+                print(format_row.format("X  in", *cpa_product[p][fh-1:n]))
+                print(format_row.format("X out", *cpa_product_out[p][fh-1:n]))
+                print(format_row.format("C recept", *[round(_) for _ in rpm[p]["c"][fh-1:n]]))
+                print(format_row.format("D recept", *[round(_) for _ in rpm[p]["d"][fh-1:n]]))
+                print(format_row.format("Unavail", *[sum([self.model.pa_cdc.unavailability[a][p][t] for a in self.itProductAff(p)]) for t in range(fh-1, n)]))
+                print("=" * nspaces * (n - fh + 2))
+                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product[p][:n])[fh-1:]]))
+                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product_out[p][:n])[fh-1:]]))
+        sys.stdout = original_stdout
+
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
+        self.flushLogs()
+
         with open(os.path.join(self.inputs_folder, f"input_S{start_week}.json")) as fp:
             input = json.load(fp)
 
@@ -30,6 +64,7 @@ class Simulation(Shared):
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
 
             # snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
+
             sales_f = os.path.join(self.sales_folder, f"sales_S{k}.json")
             self.model.loadWeekInput(input_dict=input)
             self.model.loadSalesForcast(sales_f)
@@ -62,7 +97,7 @@ class Simulation(Shared):
             n = self.real_horizon
             fh = self.fixed_horizon
 
-            # In case their is a filter to apply
+            # In case there is a filter to apply
             if smoothing_filter:
                 cpa_product_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cpa_product[p][:n]) + cpa_product[p][n:] for p in self.products}
                 pa_product_out     = {p: utils.diff(cpa_product_out[p]) for p in self.products}
@@ -73,23 +108,8 @@ class Simulation(Shared):
                 snapshot["pa_aff"]      = pa_aff_out
                 snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product_out)
 
-                # print distributions
-                for p in self.products:
-                    print("************************************************************************************************************************************************")
-                    print("Week :", k, ", Product: ", p)
-                    format_row = "{:>7}" * (n - fh + 2)
-                    print("          ", format_row.format("", *[f"W{t}" for t in range(k + fh - 1, k + n)]))
-                    print("------------------------------------------------------------------------------------------------------------------------------------------------")
-                    print("A demand: ", format_row.format("", *[round(_) for _ in dpm[p]["a"][fh-1:n]]))
-                    print("B demand: ", format_row.format("", *[round(_) for _ in dpm[p]["b"][fh-1:n]]))
-                    print("X  in   : ", format_row.format("", *cpa_product[p][fh-1:n]))
-                    print("X out   : ", format_row.format("", *cpa_product_out[p][fh-1:n]))
-                    print("C recept: ", format_row.format("", *[round(_) for _ in rpm[p]["c"][fh-1:n]]))
-                    print("D recept: ", format_row.format("", *[round(_) for _ in rpm[p]["d"][fh-1:n]]))
-                    print("Unavail : ", format_row.format("", *[sum([self.model.pa_cdc.unavailability[a][p][t] for a in self.itProductAff(p)]) for t in range(fh-1, n)]))
-                    print("================================================================================================================================================")
-                    print("NL4 in  : ", format_row.format("", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product[p][:n])[fh-1:]]))
-                    print("NL4 out : ", format_row.format("", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product_out[p][:n])[fh-1:]]))
+                # log simulation state 
+                self.log_state(k, dpm, rpm, cpa_product, cpa_product_out)
 
             # utils.saveToFile(snapshot, snapshot_f)
             self.sim_history.fillData(snapshot)
