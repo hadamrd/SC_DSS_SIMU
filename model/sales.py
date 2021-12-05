@@ -6,7 +6,7 @@ from . import utils
 import os
 import json 
 from .shared import PvRandStrat
-
+import copy
 class SalesManager(Shared):
 
     def __init__(self) -> None:
@@ -72,7 +72,7 @@ class SalesManager(Shared):
         utils.replicateFile(initial_sales_f, os.path.join(dst_folder, f"sales_S{start_week}.json"))
         with open(initial_sales_f) as fp:
             pv_ref: dict[str, dict[str, list[int]]] = json.load(fp)
-        sales = pv_ref.copy()
+        sales = copy.deepcopy(pv_ref)
         for w in range(start_week + 1, end_week + 1):     
             if self.pv_dependency:
                 pv_ref = sales 

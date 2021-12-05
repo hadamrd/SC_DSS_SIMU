@@ -84,18 +84,15 @@ class Model(Shared):
         for a, affiliate in self.affiliates.items():
             affiliate.initial_stock = self.initial_stock[a]
             affiliate.run(self.sales_forcast[a], self.prev_supply[a])
-
         self.cdc.initial_stock = self.getCDCInitialStock()
         self.cdc_demand = self.getCDCDemand()
         self.cdc_prev_supply = self.getCDCPrevSupply()
         self.cdc_product_demand = self.sumOverAffiliate(self.cdc_demand)
         self.cdc_prod_demand = self.cdc.getProdDemand(self.prev_production, self.cdc_product_demand)
-
         self.factory_prod_demand = {p: self.cdc_prod_demand[p][self.prod_time:] + [0] * self.prod_time for p in self.products}
         self.factory_prev_production = {p: self.prev_production[p][self.prod_time:] + [0] * self.prod_time for p in self.products}
         self.factory.run(self.factory_prod_demand, self.factory_prev_production)
         self.cdc_reception = self.getCDCReception()
-    
         self.cdc_supply, self.cdc_product_supply, self.cdc_dept = self.cdc.run(self.cdc_prev_supply, self.cdc_demand, self.cdc_reception)
 
     def getSnapShot(self):

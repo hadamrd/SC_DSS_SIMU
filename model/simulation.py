@@ -32,8 +32,8 @@ class Simulation(Shared):
     def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception, demande_ref, reception_ref):      
         n = self.real_horizon
         fh = self.fixed_horizon          
-        nchars = 16 + 7 * (n - fh + 1)
-        format_row = "{:>16}" + "{:>7}" * (n - fh + 1)
+        nchars = 16 + 7 * n
+        format_row = "{:>16}" + "{:>7}" * n
         original_stdout = sys.stdout # Save a reference to the original standard output
         product_sales_forcast = self.model.getProductSalesForcast()
         product_demand = self.model.cdc_product_demand
@@ -46,23 +46,25 @@ class Simulation(Shared):
                 print("*" * nchars)
                 print("Week :", k, ", Product: ", p, ", Cumulated Plans", "\n")
                 print("Initial stock: ", self.model.cdc.initial_stock[p])
-                print(format_row.format("week", *[f"W{t}" for t in range(k + fh - 1, k + n)]))
-                print(format_row.format("sales", *list(utils.accumu(product_sales_forcast[p]))[fh-1:n]))
-                print(format_row.format("demand", *list(utils.accumu(product_demand[p]))[fh-1:n]))
-                print(format_row.format("reception", *list(utils.accumu(reception[p]))[fh-1:n]))
-                print(format_row.format("demand ref", *list(utils.accumu(product_demande_ref[p]))[fh-1:n]))
-                print(format_row.format("reception ref", *list(utils.accumu(reception_ref[p]))[fh-1:n]))
-                print(format_row.format("dept", *product_dept[p][fh-1:n]))
+                print(format_row.format("week", *[f"W{t}" for t in range(k, k + n)]))
                 print("-" * nchars)
-                print(format_row.format("A demand ref", *[round(_) for _ in dpm[p]["a"][fh-1:n]]))
-                print(format_row.format("B demand ref", *[round(_) for _ in dpm[p]["b"][fh-1:n]]))
-                print(format_row.format("X in", *cproduct_supply[p][fh-1:n]))
-                print(format_row.format("X out", *cproduct_supply_out[p][fh-1:n]))
-                print(format_row.format("C reception ref", *[round(_) for _ in rpm[p]["c"][fh-1:n]]))
-                print(format_row.format("D reception ref", *[round(_) for _ in rpm[p]["d"][fh-1:n]]))
+                print(format_row.format("sales", *list(utils.accumu(product_sales_forcast[p]))[:n]))
+                print(format_row.format("demand", *list(utils.accumu(product_demand[p]))[:n]))
+                print(format_row.format("demand ref", *list(utils.accumu(product_demande_ref[p]))[:n]))
+                print("-" * nchars)
+                print(format_row.format("reception", *list(utils.accumu(reception[p]))[:n]))
+                print(format_row.format("reception ref", *list(utils.accumu(reception_ref[p]))[:n]))
+                print(format_row.format("dept", *product_dept[p][:n]))
+                print("-" * nchars)
+                print(format_row.format("A demand ref", *[round(_) for _ in dpm[p]["a"][:n]]))
+                print(format_row.format("B demand ref", *[round(_) for _ in dpm[p]["b"][:n]]))
+                print(format_row.format("X in", *cproduct_supply[p][:n]))
+                print(format_row.format("X out", *cproduct_supply_out[p][:n]))
+                print(format_row.format("C reception ref", *[round(_) for _ in rpm[p]["c"][:n]]))
+                print(format_row.format("D reception ref", *[round(_) for _ in rpm[p]["d"][:n]]))
                 print("=" * nchars)
-                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply[p][:n])[fh-1:]]))
-                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])[fh-1:]]))
+                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply[p][:n])[:]]))
+                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])[:]]))
         sys.stdout = original_stdout
 
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
