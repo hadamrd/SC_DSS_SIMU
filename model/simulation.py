@@ -118,8 +118,9 @@ class Simulation(Shared):
 
             # In case there is a filter to apply
             if smoothing_filter:
-                cproduct_supply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) + cproduct_supply[p][n:] for p in self.products}
-                product_supply_out = {p: utils.diff(cproduct_supply_out[p]) for p in self.products}
+                cproduct_supply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) for p in self.products}
+                product_supply_out = {p: utils.diff(cproduct_supply_out[p]) + product_supply[p][n:] for p in self.products}
+                cproduct_supply_out = {p: cproduct_supply_out[p] + list(utils.accumu(product_supply[p][n:], cproduct_supply_out[p][n-1])) for p in self.products}
                 supply_out = self.dispatch(product_supply_out, demand, supply)
                 self.model.setCDCSupply(supply_out, product_supply_out)
                 snapshot["cproduct_supply"] = cproduct_supply_out
