@@ -68,6 +68,6 @@ class Shared:
                 raw_need_a_p_t = sum([demand[a][p][t] + unavailability[a][p][t-1] for a in self.itProductAff(p)])
                 supply_ratio[a][p][t] = (demand[a][p][t] + unavailability[a][p][t-1]) / raw_need_a_p_t if raw_need_a_p_t != 0 else 0
                 if t >= self.fixed_horizon:
-                    supply_plan[a][p][t] = round(min(capacity[p][t] * supply_ratio[a][p][t], demand[a][p][t] + unavailability[a][p][t-1]))
+                    supply_plan[a][p][t] = round(max(min(capacity[p][t] * supply_ratio[a][p][t], demand[a][p][t] + unavailability[a][p][t-1]), 0))
                 unavailability[a][p][t] = unavailability[a][p][t-1] + demand[a][p][t] - supply_plan[a][p][t]
         return supply_plan
