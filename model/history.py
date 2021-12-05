@@ -36,6 +36,8 @@ class History(Shared):
         self.nbr_weeks = self.end_week - self.start_week + 1
 
     def fillData(self, snapshot: dict):
+        if len(self.ba) == 0:
+            print(self.sumOverAffiliate(snapshot["demand"])["P1"])
         self.ba.append(snapshot["demand"])
         self.pv.append(snapshot["sales_forcast"])
         self.pa.append(snapshot["supply"])
@@ -66,6 +68,7 @@ class History(Shared):
 
         wb = openpyxl.load_workbook(self.history_template_f)
 
+        print("here: ", self.sumOverAffiliate(self.ba[0])["P1"])
         for p in self.products:
             dst_file = os.path.join(results_folder, f"{prefix}_{p}_history.xlsx")
             for w in range(self.nbr_weeks):

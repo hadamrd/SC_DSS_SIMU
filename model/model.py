@@ -93,6 +93,9 @@ class Model(Shared):
         self.cdc_supply, self.cdc_product_supply, self.cdc_dept = self.cdc.run(self.cdc_prev_supply, self.cdc_demand, self.cdc_reception)
 
     def getSnapShot(self):
+        if self.week == 2:
+            rs = self.sumOverAffiliate(self.cdc_demand)
+            print(rs["P1"])
         snap = {
             "week": self.week,
             "supply": self.cdc_supply,

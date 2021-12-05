@@ -1,6 +1,7 @@
 import json
 from typing import Any, Tuple
 import enum
+import math
 class PvRandStrat(enum.Enum):
     minmax = "minmax"
     uniform = "uniform"
@@ -56,24 +57,28 @@ class Shared:
             if p in self.affiliate_products[a]:
                 yield a
 
-
+    def dipatchSupply(self, capacity, raw_demand, a, p, t):
+        if raw_demand[a][p][t] < 0:
+            return 0
+        tot_raw_demand = sum([raw_demand[a][p][t] for a in self.itProductAff(p) if raw_demand[a][p][t] > 0])
+        if capacity[p][t] < tot_raw_demand:
+            return math.floor(capacity[p][t] * raw_demand[a][p][t] / tot_raw_demand)
+        else:
+            return raw_demand[a][p][t]
 
     def dispatch(self, capacity, demand, prev_supply) -> dict[str, dict[str, list[int]]]:
         supply = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        dept = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        supply_ratio = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        raw_demand = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
 
-        for a, p in self.itParams():
-            supply[a][p][:self.fixed_horizon] = prev_supply[a][p][:self.fixed_horizon]
-            dept[a][p][0] = demand[a][p][0] - supply[a][p][0]
-            raw_need_a_p_0 = sum([demand[a][p][0] for a in self.itProductAff(p)])
-            supply_ratio[a][p][0] = demand[a][p][0] / raw_need_a_p_0 if raw_need_a_p_0 != 0 else 0
-
-        for t in range(1, self.horizon):
-            for a, p in self.itParams():
-                raw_need_a_p_t = sum([demand[a][p][t] + dept[a][p][t-1] for a in self.itProductAff(p)])
-                supply_ratio[a][p][t] = (demand[a][p][t] + dept[a][p][t-1]) / raw_need_a_p_t if raw_need_a_p_t != 0 else 0
-                if t >= self.fixed_horizon:
-                    supply[a][p][t] = round(max(min(capacity[p][t] * supply_ratio[a][p][t], demand[a][p][t] + dept[a][p][t-1]), 0))
-                dept[a][p][t] = dept[a][p][t-1] + demand[a][p][t] - supply[a][p][t]
+        for p in self.products:
+            dept = 0
+            for t in range(self.horizon):
+                for a in self.itProductAff(p):
+                    raw_demand[a][p][t] = demand[a][p][t] + dept
+                for  a in self.itProductAff(p):
+                    if t < self.fixed_horizon:
+                        supply[a][p][t] = self.dipatchSupply(capacity, prev_supply, a, p, t)
+                    else:
+                        supply[a][p][t] = self.dipatchSupply(capacity, raw_demand, a, p, t)
+                    dept = dept + demand[a][p][t] - supply[a][p][t]
         return supply

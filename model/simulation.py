@@ -80,6 +80,9 @@ class Simulation(Shared):
             # get model cdc outputs
             reception = self.model.cdc_reception
             demand = self.model.cdc_demand
+            
+            if k == start_week:
+                print(self.model.cdc_product_demand["P1"])
                         
             if all(demand[a][p][t]==0 for t in range(self.horizon) for a,p in self.itParams()):
                 raise
