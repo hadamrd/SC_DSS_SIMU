@@ -6,7 +6,22 @@
     "pv_dependency": false,
     "ba_dependency": false,
     "pdp_dependency": false,
-    "rand_pv_stat":  "uniform",
+    "rand_pv_stat":  "minmax",
+    "affiliate_pv_range": {
+        "france": 0,
+        "spain": 0,
+        "chili": 0,
+        "australia": 0
+    },
+    "proba_pv_inf": 1,
+    "factory_capacity": [30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 60000, 60000, 60000, 60000, 60000, 50000, 17000, 17000, 17000, 17000, 17000, 17000, 17000],
+    "target_stock": {
+        "france": 200,
+        "spain": 150,
+        "chili": 300,
+        "australia": 350,
+        "cdc": 300
+    },
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
     "demand_UCMF"   :   "uncertainty_models/UMCDF_I2.xlsx",
@@ -26,13 +41,6 @@
         "spain": 1,
         "chili": 2,
         "australia": 3
-    },    
-    "target_stock": {
-        "france": 200,
-        "spain": 150,
-        "chili": 300,
-        "australia": 350,
-        "cdc": 300
     },
     "affiliates": [
         "france",
@@ -51,13 +59,5 @@
         "spain": ["P1", "P2"],
         "chili": ["P1", "P3"],
         "australia": ["P1", "P2"]
-    },
-    "affiliate_pv_range": {
-        "france": 100,
-        "spain": 100,
-        "chili": 150,
-        "australia": 200
-    },
-    "proba_pv_inf": 0.8,
-    "factory_capacity": [30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 60000, 60000, 60000, 60000, 60000, 50000, 17000, 17000, 17000, 17000, 17000, 17000, 17000]
+    }
 }

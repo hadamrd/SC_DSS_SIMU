@@ -29,7 +29,7 @@ class Simulation(Shared):
             if os.path.exists(log_f):
                 open(log_f.format(p), 'w').close()
 
-    def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception):      
+    def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception, demande_ref, reception_ref):      
         n = self.real_horizon
         fh = self.fixed_horizon          
         nchars = 16 + 7 * (n - fh + 1)
@@ -38,6 +38,7 @@ class Simulation(Shared):
         product_sales_forcast = self.model.getProductSalesForcast()
         product_demand = self.model.cdc_product_demand
         product_dept = self.sumOverAffiliate(self.model.cdc_dept)
+        product_demande_ref = self.sumOverAffiliate(demande_ref)
         for p in self.products:
             log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
             with open(log_f.format(p), 'a') as fp:
@@ -49,6 +50,8 @@ class Simulation(Shared):
                 print(format_row.format("sales", *list(utils.accumu(product_sales_forcast[p]))[fh-1:n]))
                 print(format_row.format("demand", *list(utils.accumu(product_demand[p]))[fh-1:n]))
                 print(format_row.format("reception", *list(utils.accumu(reception[p]))[fh-1:n]))
+                print(format_row.format("demand ref", *list(utils.accumu(product_demande_ref[p]))[fh-1:n]))
+                print(format_row.format("reception ref", *list(utils.accumu(reception_ref[p]))[fh-1:n]))
                 print(format_row.format("dept", *product_dept[p][fh-1:n]))
                 print("-" * nchars)
                 print(format_row.format("A demand ref", *[round(_) for _ in dpm[p]["a"][fh-1:n]]))
@@ -78,7 +81,7 @@ class Simulation(Shared):
             self.model.runWeek()
             
             # get model cdc outputs
-            reception = self.model.cdc_reception
+            reception = copy.deepcopy(self.model.cdc_reception)
             demand = self.model.cdc_demand
 
             supply = self.model.cdc_supply
@@ -113,17 +116,17 @@ class Simulation(Shared):
 
             # In case there is a filter to apply
             if smoothing_filter:
-                cproduct_supply_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) + cproduct_supply[p][n:] for p in self.products}
-                product_supply_out     = {p: utils.diff(cproduct_supply_out[p]) for p in self.products}
-                supply_out         = self.dispatch(product_supply_out, demand, supply)
+                cproduct_supply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) + cproduct_supply[p][n:] for p in self.products}
+                product_supply_out = {p: utils.diff(cproduct_supply_out[p]) for p in self.products}
+                supply_out = self.dispatch(product_supply_out, demand, supply)
                 self.model.setCDCSupply(supply_out, product_supply_out)
                 snapshot["cproduct_supply"] = cproduct_supply_out
-                snapshot["product_supply"]  = product_supply_out
-                snapshot["supply"]      = supply_out
+                snapshot["product_supply"] = product_supply_out
+                snapshot["supply"] = supply_out
                 snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply_out)
 
                 # log simulation state 
-                self.log_state(k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception)
+                self.log_state(k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception, demand_ref, reception_ref)
 
             # utils.saveToFile(snapshot, snapshot_f)
 

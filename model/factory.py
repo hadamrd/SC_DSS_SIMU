@@ -23,10 +23,10 @@ class Factory(Shared):
             for p in self.products:
                 self.raw_demand[p][t] = demand[p][t] + (self.dept[p][t-1] if t>0 else 0)
             for p in self.products:
-                if t < self.prod_time:
+                if t < self.fixed_horizon:
                     self.production[p][t] = prev_production[p][t]
                 else:
                     self.production[p][t] = self.dispatchProduction(self.raw_demand, p, t)
-                self.dept[p][t] = (self.dept[p][t-1] if t>0 else 0) + demand[p][t] - self.production[p][t]
+                self.dept[p][t] = self.raw_demand[p][t] - self.production[p][t]
         return self.production
 

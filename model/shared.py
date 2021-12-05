@@ -68,17 +68,16 @@ class Shared:
 
     def dispatch(self, capacity, demand, prev_supply) -> dict[str, dict[str, list[int]]]:
         supply = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        raw_demand = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-
+        raw_demand = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}        
+        dept = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
         for p in self.products:
-            dept = 0
             for t in range(self.horizon):
                 for a in self.itProductAff(p):
-                    raw_demand[a][p][t] = demand[a][p][t] + dept
+                    raw_demand[a][p][t] = demand[a][p][t] + (dept[a][p][t-1] if t>0 else 0)
                 for  a in self.itProductAff(p):
                     if t < self.fixed_horizon:
                         supply[a][p][t] = self.dipatchSupply(capacity, prev_supply, a, p, t)
                     else:
                         supply[a][p][t] = self.dipatchSupply(capacity, raw_demand, a, p, t)
-                    dept = dept + demand[a][p][t] - supply[a][p][t]
+                    dept[a][p][t] = raw_demand[a][p][t] - supply[a][p][t]
         return supply
