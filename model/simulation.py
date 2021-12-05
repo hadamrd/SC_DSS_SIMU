@@ -28,30 +28,37 @@ class Simulation(Shared):
             if os.path.exists(log_f):
                 open(log_f.format(p), 'w').close()
 
-    def log_state(self, k, dpm, rpm, cpa_product, cpa_product_out):      
+    def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, demand, reception):      
         n = self.real_horizon
         fh = self.fixed_horizon          
-        nspaces = 9
-        format_row = "{:>9}" * (n - fh + 2)
+        nchars = 16 + 7 * (n - fh + 1)
+        format_row = "{:>16}" + "{:>7}" * (n - fh + 1)
         original_stdout = sys.stdout # Save a reference to the original standard output
+        product_sales_forcast = self.model.getProductSalesForcast()
+        product_demand = self.model.cdc_product_demand
+        product_dept = self.sumOverAffiliate(self.model.cdc_dept)
         for p in self.products:
             log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
             with open(log_f.format(p), 'a') as fp:
                 sys.stdout = fp
-                print("*" * nspaces * (n - fh + 2))
-                print("Week :", k, ", Product: ", p, "\n")
+                print("*" * nchars)
+                print("Week :", k, ", Product: ", p, ", Cumulated Plans", "\n")
+                print("Initial stock: ", self.model.cdc.initial_stock[p])
                 print(format_row.format("week", *[f"W{t}" for t in range(k + fh - 1, k + n)]))
-                print("-" * nspaces * (n - fh + 2))
-                print(format_row.format("A demand", *[round(_) for _ in dpm[p]["a"][fh-1:n]]))
-                print(format_row.format("B demand", *[round(_) for _ in dpm[p]["b"][fh-1:n]]))
-                print(format_row.format("X  in", *cpa_product[p][fh-1:n]))
-                print(format_row.format("X out", *cpa_product_out[p][fh-1:n]))
-                print(format_row.format("C recept", *[round(_) for _ in rpm[p]["c"][fh-1:n]]))
-                print(format_row.format("D recept", *[round(_) for _ in rpm[p]["d"][fh-1:n]]))
-                print(format_row.format("Unavail", *[sum([self.model.pa_cdc.unavailability[a][p][t] for a in self.itProductAff(p)]) for t in range(fh-1, n)]))
-                print("=" * nspaces * (n - fh + 2))
-                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product[p][:n])[fh-1:]]))
-                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cpa_product_out[p][:n])[fh-1:]]))
+                print(format_row.format("sales", *list(utils.accumu(product_sales_forcast[p]))[fh-1:n]))
+                print(format_row.format("demand", *list(utils.accumu(product_demand[p]))[fh-1:n]))
+                print(format_row.format("reception", *list(utils.accumu(reception[p]))[fh-1:n]))
+                print(format_row.format("dept", *product_dept[p][fh-1:n]))
+                print("-" * nchars)
+                print(format_row.format("A demand ref", *[round(_) for _ in dpm[p]["a"][fh-1:n]]))
+                print(format_row.format("B demand ref", *[round(_) for _ in dpm[p]["b"][fh-1:n]]))
+                print(format_row.format("X in", *cproduct_supply[p][fh-1:n]))
+                print(format_row.format("X out", *cproduct_supply_out[p][fh-1:n]))
+                print(format_row.format("C reception ref", *[round(_) for _ in rpm[p]["c"][fh-1:n]]))
+                print(format_row.format("D reception ref", *[round(_) for _ in rpm[p]["d"][fh-1:n]]))
+                print("=" * nchars)
+                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply[p][:n])[fh-1:]]))
+                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])[fh-1:]]))
         sys.stdout = original_stdout
 
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
@@ -71,10 +78,14 @@ class Simulation(Shared):
             self.model.runWeek()
             
             # get model cdc outputs
-            reception = self.model.getCDCReception()
-            demand = self.model.getCDCSupplyDemand()
-            pa_aff = self.model.getCDCAffSupplyPlan()
-            pa_product = self.model.getCDCProductSupplyPlan()
+            reception = self.model.cdc_reception
+            demand = self.model.cdc_demand
+                        
+            if all(demand[a][p][t]==0 for t in range(self.horizon) for a,p in self.itParams()):
+                raise
+
+            supply = self.model.cdc_supply
+            product_supply = self.model.cdc_product_supply
             initial_stock = self.model.getCDCInitialStock()
 
             # calculate ref plans
@@ -89,27 +100,26 @@ class Simulation(Shared):
             
             # calculate distributions and metrics
             dpm, rpm = self.risk_manager.getDitributions(demand, reception, demand_ref, reception_ref, initial_stock)
-            cpa_product   = {p: list(utils.accumu(pa_product[p])) for p in self.products}
+            cproduct_supply   = {p: list(utils.accumu(product_supply[p])) for p in self.products}
             snapshot = self.model.getSnapShot()
-            snapshot["cpa_product"] = cpa_product
+            snapshot["cproduct_supply"] = cproduct_supply
             snapshot["reception"] = reception
-            snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product)
+            snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply)
             n = self.real_horizon
-            fh = self.fixed_horizon
 
             # In case there is a filter to apply
             if smoothing_filter:
-                cpa_product_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cpa_product[p][:n]) + cpa_product[p][n:] for p in self.products}
-                pa_product_out     = {p: utils.diff(cpa_product_out[p]) for p in self.products}
-                pa_aff_out         = self.dispatch(pa_product_out, demand, pa_aff)
-                self.model.setCDCSupplyPlan(pa_aff_out, pa_product_out)
-                snapshot["cpa_product"] = cpa_product_out
-                snapshot["pa_product"]  = pa_product_out
-                snapshot["pa_aff"]      = pa_aff_out
-                snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpa_product_out)
+                cproduct_supply_out    = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) + cproduct_supply[p][n:] for p in self.products}
+                product_supply_out     = {p: utils.diff(cproduct_supply_out[p]) for p in self.products}
+                supply_out         = self.dispatch(product_supply_out, demand, supply)
+                self.model.setCDCSupply(supply_out, product_supply_out)
+                snapshot["cproduct_supply"] = cproduct_supply_out
+                snapshot["product_supply"]  = product_supply_out
+                snapshot["supply"]      = supply_out
+                snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply_out)
 
                 # log simulation state 
-                self.log_state(k, dpm, rpm, cpa_product, cpa_product_out)
+                self.log_state(k, dpm, rpm, cproduct_supply, cproduct_supply_out, demand, reception)
 
             # utils.saveToFile(snapshot, snapshot_f)
             self.sim_history.fillData(snapshot)

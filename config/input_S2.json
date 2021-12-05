@@ -19,13 +19,13 @@
             "P2": 400
         },
         "cdc": {
-            "P1": 100,
+            "P1": 1000,
             "P2": 50,
             "P3": 100,
             "P4": 60
         }
     },
-    "prev_prod_plan": {
+    "prev_production": {
         "P1": [
             120,
             280,
@@ -131,7 +131,7 @@
             113
         ]
     },
-    "prev_supply_plan": {
+    "prev_supply": {
         "france": {
             "P1": [
                 0,

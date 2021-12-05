@@ -56,8 +56,8 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
     col = 23
     n = hist1.horizon
     fh = hist1.fixed_horizon
-    cpa1_metric = {p: [getMeanAbsDiff(hist1.cpa_product, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
-    cpa2_metric = {p: [getMeanAbsDiff(hist2.cpa_product, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
+    cpa1_metric = {p: [getMeanAbsDiff(hist1.cproduct_supply, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
+    cpa2_metric = {p: [getMeanAbsDiff(hist2.cproduct_supply, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
     
     cpa1_var = getMeanVarMetric(cpa1_metric, n)
     cpa2_var = getMeanVarMetric(cpa2_metric, n)

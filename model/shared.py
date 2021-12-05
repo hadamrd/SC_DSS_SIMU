@@ -15,7 +15,6 @@ class Shared:
         self.prod_time: int                 = self.settings["prod_time"]
         self.delivery_time: dict[str, int]  = self.settings["delivery_time"]
         self.target_stock: dict[str, int]   = self.settings["target_stock"]
-        self.factory_capacity: list[int]    = self.settings["factory_capacity"]
         self.affiliate_products: dict[str, list[str]] = self.settings["affiliate_products"]
         self.affiliate_pv_range: int        = self.settings["affiliate_pv_range"]
         self.real_horizon: int              = self.settings["real_horizon"]
@@ -39,8 +38,13 @@ class Shared:
             if name == aff_name:
                 return code
     
-    def sumOverAffiliate(self, quantity, product, horizon) -> list[int]:
-        return [sum([quantity[a][product][t] for a in self.itProductAff(product)]) for t in range(horizon)]
+    def sumOverAffiliate(self, quantity, product=None, horizon=None) -> list[int]:
+        if not horizon:
+            horizon = self.horizon
+        if product:
+            return [sum([quantity[a][product][t] for a in self.itProductAff(product)]) for t in range(horizon)]
+        else:
+            return {product: [sum([quantity[a][product][t] for a in self.itProductAff(product)]) for t in range(horizon)] for product in self.products}
 
     def itParams(self):
         for a in self.affiliate_name:
@@ -51,23 +55,25 @@ class Shared:
         for a in self.affiliate_name:
             if p in self.affiliate_products[a]:
                 yield a
-    
+
+
+
     def dispatch(self, capacity, demand, prev_supply) -> dict[str, dict[str, list[int]]]:
-        supply_plan = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        unavailability = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        supply = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        dept = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
         supply_ratio = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
 
         for a, p in self.itParams():
-            supply_plan[a][p][:self.fixed_horizon] = prev_supply[a][p][:self.fixed_horizon]
-            unavailability[a][p][0] = demand[a][p][0] - supply_plan[a][p][0]
+            supply[a][p][:self.fixed_horizon] = prev_supply[a][p][:self.fixed_horizon]
+            dept[a][p][0] = demand[a][p][0] - supply[a][p][0]
             raw_need_a_p_0 = sum([demand[a][p][0] for a in self.itProductAff(p)])
             supply_ratio[a][p][0] = demand[a][p][0] / raw_need_a_p_0 if raw_need_a_p_0 != 0 else 0
 
         for t in range(1, self.horizon):
             for a, p in self.itParams():
-                raw_need_a_p_t = sum([demand[a][p][t] + unavailability[a][p][t-1] for a in self.itProductAff(p)])
-                supply_ratio[a][p][t] = (demand[a][p][t] + unavailability[a][p][t-1]) / raw_need_a_p_t if raw_need_a_p_t != 0 else 0
+                raw_need_a_p_t = sum([demand[a][p][t] + dept[a][p][t-1] for a in self.itProductAff(p)])
+                supply_ratio[a][p][t] = (demand[a][p][t] + dept[a][p][t-1]) / raw_need_a_p_t if raw_need_a_p_t != 0 else 0
                 if t >= self.fixed_horizon:
-                    supply_plan[a][p][t] = round(max(min(capacity[p][t] * supply_ratio[a][p][t], demand[a][p][t] + unavailability[a][p][t-1]), 0))
-                unavailability[a][p][t] = unavailability[a][p][t-1] + demand[a][p][t] - supply_plan[a][p][t]
-        return supply_plan
+                    supply[a][p][t] = round(max(min(capacity[p][t] * supply_ratio[a][p][t], demand[a][p][t] + dept[a][p][t-1]), 0))
+                dept[a][p][t] = dept[a][p][t-1] + demand[a][p][t] - supply[a][p][t]
+        return supply

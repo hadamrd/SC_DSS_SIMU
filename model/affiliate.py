@@ -1,20 +1,20 @@
-class Affiliate:
-    def __init__(self, name: str, model) -> None:
+from os import name
+from . import Shared
+class Affiliate(Shared):
+    def __init__(self, name) -> None:
+        super().__init__()
         self.name = name
-        self.model = model
-        self.products = model.sales_forcast[self.name].keys()
-        self.delivery_time = model.delivery_time[self.name]
-        self.initial_stock = {p: model.initial_stock[self.name][p] for p in self.products}
-        self.sales_forcast = {p: model.sales_forcast[self.name][p] for p in self.products}
-        self.target_stock = {p: [model.target_stock[self.name]] * model.horizon for p in self.products}
-        self.projected_stock = {p: [None for _ in range(model.horizon)]  for p in self.products}
-        self.supply_demand = {p: [None for _ in range(model.horizon)] for p in self.products}
-        self.imminent_supply = {p: model.prev_supply_plan[self.name][p][:self.delivery_time] +\
-                                 [0] * (model.horizon-self.delivery_time) for p in self.products}
+        self.products = self.affiliate_products[name]
+        self.initial_stock = {p: [None for _ in range(self.horizon)] for p in self.products}
+        self.delivery_time = self.delivery_time[self.name]
+        self.target_stock = {p: [self.target_stock[self.name]] * self.horizon for p in self.products}
+        self.demand = {p: [None for _ in range(self.horizon)] for p in self.products}
         
-    def run(self):
+    def run(self, sales_forcast, prev_supply):
         for p in self.products:
-            for t in range(self.model.horizon):
-                prev_stock_proj = self.initial_stock[p] if t == 0 else self.projected_stock[p][t-1]
-                self.supply_demand[p][t] = max(0, self.sales_forcast[p][t] + self.target_stock[p][t] - self.imminent_supply[p][t] - prev_stock_proj)
-                self.projected_stock[p][t] = prev_stock_proj + self.imminent_supply[p][t] + self.supply_demand[p][t] - self.sales_forcast[p][t]
+            stock_proj = self.initial_stock[p]
+            for t in range(self.horizon):
+                imminent_supply = prev_supply[p][t] if t < self.delivery_time else 0
+                self.demand[p][t] = max(0, sales_forcast[p][t] + self.target_stock[p][t] - imminent_supply - stock_proj)
+                stock_proj = stock_proj + imminent_supply + self.demand[p][t] - sales_forcast[p][t]
+        return self.demand

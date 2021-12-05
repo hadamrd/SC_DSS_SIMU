@@ -42,8 +42,8 @@ def gen(src_file, dst_file):
         data = json.load(fp)
 
     data["sales_forcast"] = pv
-    data["prev_supply_plan"] = pa
-    data["prev_prod_plan"] = pdp
+    data["prev_supply"] = pa
+    data["prev_production"] = pdp
 
     with open(dst_file, "w") as fp:
         json.dump(data, fp)

@@ -13,12 +13,12 @@ class History(Shared):
         self.pv  = []
         self.ba  = []
         self.pa  = []
-        self.unavailability = []
+        self.dept = []
         self.pdp = []
         self.bp  = []
         self.s0  = []
-        self.pa_product  = []
-        self.cpa_product = []
+        self.product_supply  = []
+        self.cproduct_supply = []
         self.metrics = []
 
     def sumCumHistOverAff(self, cumHist):
@@ -38,13 +38,13 @@ class History(Shared):
     def fillData(self, snapshot: dict):
         self.ba.append(snapshot["demand"])
         self.pv.append(snapshot["sales_forcast"])
-        self.pa.append(snapshot["pa_aff"])
-        self.unavailability.append(snapshot["unavailabiliy"])
+        self.pa.append(snapshot["supply"])
+        self.dept.append(snapshot["dept"])
         self.pdp.append(snapshot["reception"])
         self.bp.append(snapshot["prod_demand"])
         self.s0.append(snapshot["initial_stock"])
-        self.pa_product.append(snapshot["pa_product"])
-        self.cpa_product.append(snapshot["cpa_product"])
+        self.product_supply.append(snapshot["product_supply"])
+        self.cproduct_supply.append(snapshot["cproduct_supply"])
         self.metrics.append(snapshot["metrics"])
 
     def load(self, history_folder):
@@ -74,7 +74,7 @@ class History(Shared):
                     wb["BA"].cell(row=3+w, column=3+t+w).value = sum([self.ba[w][a][p][t] for a in self.itProductAff(p)])
                     wb["BP"].cell(row=3+w, column=3+t+w).value = self.bp[w][p][t]
                     wb["PDP"].cell(row=3+w, column=3+t+w).value = self.pdp[w][p][t]
-                    wb["PA"].cell(row=3+w, column=3+t+w).value = self.pa_product[w][p][t]
+                    wb["PA"].cell(row=3+w, column=3+t+w).value = self.product_supply[w][p][t]
             wb.save(dst_file)
 
         wb = openpyxl.load_workbook(self.history_template_f)
