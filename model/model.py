@@ -98,8 +98,7 @@ class Model(Shared):
     def getSnapShot(self):
         snap = {
             "week": self.week,
-            "supply": copy.deepcopy(self.cdc_supply),
-            "product_supply": self.cdc_product_supply,
+            "product_supply": copy.deepcopy(self.cdc_product_supply),
             "prod_demand": self.cdc_prod_demand,
             "sales_forcast": self.sales_forcast,
             "dept": self.cdc_dept,

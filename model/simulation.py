@@ -103,13 +103,14 @@ class Simulation(Shared):
             dpm, rpm = self.risk_manager.getDitributions(demand, reception, demand_ref, reception_ref, initial_stock)
 
             # # cumulate supply plan
-            cproduct_supply   = {p: list(utils.accumu(product_supply[p])) for p in self.products}
+            cproduct_supply = {p: list(utils.accumu(product_supply[p])) for p in self.products}
             
             # # Create data snapshot
             snapshot = self.model.getSnapShot()
             snapshot["cproduct_supply"] = cproduct_supply
             snapshot["demand"] = demand
             snapshot["reception"] = reception
+            snapshot["supply"] = supply
 
             # gather metrics
             snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply)
