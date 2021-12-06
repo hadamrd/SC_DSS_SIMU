@@ -41,6 +41,13 @@ class SmoothingFilter(Shared):
             u = 1
             x[t] = round(u * x1 + (1 - u) * x2)
         for idx in unsolvable:
-            x[idx] = self.findFirstSolvable(x, unsolvable, idx, start, end)         
+            x[idx] = self.findFirstSolvable(x, unsolvable, idx, start, end)
+        if start > 0:
+            for t in range(start, end):
+                x[t] = max(x[t-1], x[t])
+        if end < self.real_horizon:
+            for t in range(end-1, start, -1):
+                print(t)
+                x[t] = min(x[t], x[t+1])
         self.validateOutput(x_in, x)
         return x
