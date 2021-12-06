@@ -82,7 +82,7 @@ class Simulation(Shared):
             self.model.runWeek()
             
             # get model cdc outputs
-            reception = copy.deepcopy(self.model.cdc_reception)
+            reception = self.model.cdc_reception
             demand = self.model.cdc_demand
 
             supply = copy.deepcopy(self.model.cdc_supply)
