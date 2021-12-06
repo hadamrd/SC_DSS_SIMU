@@ -2,7 +2,7 @@ from os import stat
 import openpyxl
 from . import Shared
 from . import utils
-
+import math
 
 class RiskManager(Shared):
 
@@ -83,7 +83,7 @@ class RiskManager(Shared):
                 F_t = Q[t] - Q[t0-1] if t0-1 > 0 else Q[t]
                 if model_type == "I1":
                     F_t /= t - t0 + 1
-                dist[param][t] = Q[t] + alpha_t * F_t + s0
+                dist[param][t] = round(Q[t] + alpha_t * F_t + s0)
         for t in range(n):
             if t > 0:
                 dist["a"][t] = max(dist["a"][t-1], dist["a"][t]) 
@@ -134,6 +134,21 @@ class RiskManager(Shared):
                 return 1 - utils.affineY(c, d, x)
             elif x > x_star:
                 return utils.affineY(a, b, x)
+    
+    @staticmethod
+    def getMinL4n(a, b, c, d):
+        if d < a:
+            return 1
+        if b <= c:
+            return 0
+        x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
+        return RiskManager.l4n(a, b, c, d, x_star)
+
+    @staticmethod
+    def getL4nAlphaBound(alpha, a, b, c, d):
+        x1 = math.floor(b - (b - a) * alpha + 1) if a != b else a
+        x2 = math.ceil(d + (c - d) * alpha - 1) if c != d else c
+        return x1, x2
 
     @staticmethod
     def getL4Possibility(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list) -> list[float]:

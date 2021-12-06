@@ -6,14 +6,14 @@
     "pv_dependency": false,
     "ba_dependency": false,
     "pdp_dependency": false,
-    "rand_pv_stat":  "uniform",
-    "proba_pv_inf": 0.5,
+    "rand_pv_stat":  "minmax",
     "affiliate_pv_range": {
-        "france": 100,
-        "spain": 100,
-        "chili": 100,
-        "australia": 100
+        "france": 0,
+        "spain": 0,
+        "chili": 0,
+        "australia": 0
     },
+    "proba_pv_inf": 1,
     "factory_capacity": [30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 60000, 60000, 60000, 60000, 60000, 50000, 17000, 17000, 17000, 17000, 17000, 17000, 17000],
     "target_stock": {
         "france": 200,

@@ -30,8 +30,7 @@ class Simulation(Shared):
                 open(log_f.format(p), 'w').close()
 
     def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception, demande_ref, reception_ref):      
-        n = self.real_horizon
-        fh = self.fixed_horizon          
+        n = self.real_horizon          
         nchars = 16 + 7 * n
         format_row = "{:>16}" + "{:>7}" * n
         original_stdout = sys.stdout # Save a reference to the original standard output
@@ -56,15 +55,15 @@ class Simulation(Shared):
                 print(format_row.format("reception ref", *list(utils.accumu(reception_ref[p]))[:n]))
                 print(format_row.format("dept", *product_dept[p][:n]))
                 print("-" * nchars)
-                print(format_row.format("A demand ref", *[round(_) for _ in dpm[p]["a"][:n]]))
-                print(format_row.format("B demand ref", *[round(_) for _ in dpm[p]["b"][:n]]))
+                print(format_row.format("A demand ref", *dpm[p]["a"][:n]))
+                print(format_row.format("B demand ref", *dpm[p]["b"][:n]))
                 print(format_row.format("X in", *cproduct_supply[p][:n]))
                 print(format_row.format("X out", *cproduct_supply_out[p][:n]))
-                print(format_row.format("C reception ref", *[round(_) for _ in rpm[p]["c"][:n]]))
-                print(format_row.format("D reception ref", *[round(_) for _ in rpm[p]["d"][:n]]))
+                print(format_row.format("C reception ref", *rpm[p]["c"][:n]))
+                print(format_row.format("D reception ref", *rpm[p]["d"][:n]))
                 print("=" * nchars)
-                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply[p][:n])[:]]))
-                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])[:]]))
+                print(format_row.format("NL4 in", *[round(_, 4) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply[p][:n])[:]]))
+                print(format_row.format("NL4 out", *[round(_, 4) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])[:]]))
         sys.stdout = original_stdout
 
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
