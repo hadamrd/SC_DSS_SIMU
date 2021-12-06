@@ -5,7 +5,7 @@
     "l4n_threshold": 0.5,
     "pv_dependency": false,
     "ba_dependency": false,
-    "pdp_dependency": false,
+    "pdp_dependency": true,
     "rand_pv_stat":  "uniform",
     "proba_pv_inf": 0.5,
     "affiliate_pv_range": {

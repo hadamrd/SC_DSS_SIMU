@@ -24,6 +24,7 @@ class SmoothingFilter(Shared):
         for j in range(idx, end):
             if j not in unsolvable:
                 return x[j]
+        return x[idx]
 
     def smooth(self, rpm: dict[str, list[int]], dpm: dict[str, list[int]], x_in: list[int]):
         x = x_in.copy()
