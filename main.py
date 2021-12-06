@@ -23,16 +23,16 @@ if __name__ == "__main__":
     )
 
     # Run without smoothing the PA plan
-    # print("> Working on with smoothing filter case: ")
-    # simu1 = Simulation("simu1")
-    # simu1.run(
-    #     initial_input_f=initial_input_f, 
-    #     start_week=start_week, 
-    #     end_week=end_week, 
-    #     sales_folder=sales_folder,
-    #     pa_filter=smoothing_filter
-    # )
-    # print("*** Finished")
+    print("> Working on with smoothing filter case: ")
+    simu1 = Simulation("simu1")
+    simu1.run(
+        initial_input_f=initial_input_f, 
+        start_week=start_week, 
+        end_week=end_week, 
+        sales_folder=sales_folder,
+        pa_filter=smoothing_filter
+    )
+    print("*** Finished")
 
     print("> Working on without smoothing filter case: ")
     simu2 = Simulation("simu2")
@@ -45,9 +45,10 @@ if __name__ == "__main__":
     )
 
     print("Generating indicators excel ... ", end="")
-    # nbr_weeks = end_week - start_week + 1
-    # metrics.exportToExcel(simu1.sim_history, simu2.sim_history, risk_indicator_f)
+    nbr_weeks = end_week - start_week + 1
+    metrics.exportToExcel(simu1.sim_history, simu2.sim_history, risk_indicator_f)
+    print("*** Finished")
 
-    # print("*** FINISHED")
+    print("*** FINISHED")
     
     
