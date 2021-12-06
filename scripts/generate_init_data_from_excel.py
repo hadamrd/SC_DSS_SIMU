@@ -2,11 +2,12 @@ import openpyxl
 import json 
 
 def gen(src_file, dst_file):
+    prods = ["P1", "P2", "P3", "P4"]
     aff = {
-        "france": 4,
-        "spain": 2,
-        "chili": 2,
-        "australia": 2
+        "france": ["P1", "P2", "P3", "P4"],
+        "spain": ["P1", "P2"],
+        "chili": ["P1", "P3"],
+        "australia": ["P1", "P2"]
     }
     wb = openpyxl.load_workbook(src_file)
     sh = wb["MJ_Initialisation"]
@@ -14,29 +15,29 @@ def gen(src_file, dst_file):
     
 
     # get pv
-    pv = {a: {p: [None for _ in range(h)] for p in [f"P{k+1}" for k in range(np)]} for a, np in aff.items()}
+    pv = {a: {p: [None for _ in range(h)] for p in ps} for a, ps in aff.items()}
     offset = 6
-    for a, np in aff.items():
-        for i in range(np):
+    for a, ps in aff.items():
+        for p in ps:
             for t in range(h):
-                pv[a][f"P{i+1}"][t] = int(sh.cell(offset, 4+t).value)
+                pv[a][p][t] = int(sh.cell(offset, 4+t).value)
             offset+=1
     
     # get pa 
     offset = 20
-    pa = {a: {p: [None for _ in range(h)] for p in [f"P{k+1}" for k in range(np)]} for a, np in aff.items()}
-    for a, np in aff.items():
-        for i in range(np):
+    pa = {a: {p: [None for _ in range(h)] for p in ps} for a, ps in aff.items()}
+    for a, ps in aff.items():
+        for p in ps:
             for t in range(h):
-                pa[a][f"P{i+1}"][t] = int(sh.cell(offset, 4+t).value)
+                pa[a][p][t] = int(sh.cell(offset, 4+t).value)
             offset+=2
 
     # get pdp
     offset = 44
-    pdp = {p: [None for _ in range(h)] for p in ["P1", "P2", "P3", "P4"]}
-    for i in range(4):
+    pdp = {p: [None for _ in range(h)] for p in prods}
+    for p in prods:
         for t in range(h):
-            pdp[f"P{i+1}"][t] = int(sh.cell(offset, 4+t).value)
+            pdp[p][t] = int(sh.cell(offset, 4+t).value)
         offset+=2
     with open(dst_file) as fp:
         data = json.load(fp)
@@ -50,7 +51,5 @@ def gen(src_file, dst_file):
  
 
 
-
-
 if __name__=="__main__":
-    gen("S2-Monthly-firstweek-correct-formula-VF.xlsm", "simu_inputs/input_S2.json")
+    gen("scripts/s2.xlsm", "config/input_S2.json")
