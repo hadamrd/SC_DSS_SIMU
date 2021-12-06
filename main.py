@@ -1,4 +1,4 @@
-from re import template
+from re import S, template
 from model.filter import SmoothingFilter
 from model import RiskManager, SalesManager, Simulation, metrics
 

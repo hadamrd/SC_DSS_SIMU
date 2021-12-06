@@ -47,7 +47,6 @@ class SmoothingFilter(Shared):
                 x[t] = max(x[t-1], x[t])
         if end < self.real_horizon:
             for t in range(end-1, start, -1):
-                print(t)
                 x[t] = min(x[t], x[t+1])
         self.validateOutput(x_in, x)
         return x

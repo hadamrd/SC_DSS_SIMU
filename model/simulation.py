@@ -85,7 +85,7 @@ class Simulation(Shared):
             reception = copy.deepcopy(self.model.cdc_reception)
             demand = self.model.cdc_demand
 
-            supply = self.model.cdc_supply
+            supply = copy.deepcopy(self.model.cdc_supply)
             product_supply = self.model.cdc_product_supply
             initial_stock = self.model.getCDCInitialStock()
 
