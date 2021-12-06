@@ -20,12 +20,12 @@
         "spain": 150,
         "chili": 300,
         "australia": 350,
-        "cdc": 300
+        "cdc": 0
     },
     "smoothing": {
         "range": {
             "start": 2,
-            "end": 19
+            "end": 20
         }
     },
     "history_template": "templates/template_simu_result.xlsx",

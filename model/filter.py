@@ -24,7 +24,9 @@ class SmoothingFilter(Shared):
         x = x_in.copy()
         l4n_in = RiskManager.getL4Necessity(rpm, dpm, x_in)
         l4n = l4n_in.copy()
-        to_solve = set([i for i in range(self.params["range"]["start"], self.params["range"]["end"]) if l4n_in[i] >= self.l4n_threshold])
+        start = self.params["range"]["start"]
+        end = self.params["range"]["end"]
+        to_solve = set([i for i in range(start, end) if l4n_in[i] >= self.l4n_threshold])
         unsolvable = set()
         while to_solve:
             for t in to_solve:

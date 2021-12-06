@@ -107,7 +107,7 @@ class RiskManager(Shared):
     
     @staticmethod
     def l4n(a: int, b: int, c: int, d: int, x: int) -> float:
-        if a >= d:
+        if a > d:
             return 1
         if x == c or x == b:
             return 0
@@ -122,7 +122,7 @@ class RiskManager(Shared):
 
     @staticmethod
     def l4p(a: int, b: int, c: int, d: int, x: int) -> float:
-        if c >= b:
+        if c > b:
             return 1
         if x == d or x == a:
             return 0
