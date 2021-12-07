@@ -7,6 +7,9 @@ import os
 import json 
 from .shared import PvRandStrat
 import copy
+
+
+random.seed(datetime.datetime.now())
 class SalesManager(Shared):
 
     def __init__(self) -> None:
@@ -46,17 +49,15 @@ class SalesManager(Shared):
     def getPvPm(self, pv, model):
         cpv = list(utils.accumu(pv))
         a, b, c, d, rw = model.values()
-        A, B, C, D = [[None] * self.horizon] * 4
-        for t in range(self.horizon):
-            F_t = cpv[t] - cpv[rw[t]-2] if rw[t]-2> 0 else cpv[t]
-            A[t] = round(cpv[t] + a[t] * F_t)
-            B[t] = round(cpv[t] + b[t] * F_t)
-            C[t] = round(cpv[t] + c[t] * F_t)
-            D[t] = round(cpv[t] + d[t] * F_t)
+        t0 = [rw-1 for rw in rw]
+        f = [cpv[t] - cpv[t0-1] if t0-1> 0 else cpv[t] for t,t0 in zip(range(self.horizon), t0)]
+        A = [cpv + f*a for cpv,f,a in zip(cpv,f,a)]
+        B = [cpv + f*b for cpv,f,b in zip(cpv,f,b)]
+        C = [cpv + f*c for cpv,f,c in zip(cpv,f,c)]
+        D = [cpv + f*d for cpv,f,d in zip(cpv,f,d)]
         return A, B, C, D
             
     def genRandSalesForcast(self, umcpv, pv_ref):
-        random.seed(datetime.datetime.now())
         acpv = [0 for _ in range(self.horizon)]
         A, B, C, D = self.getPvPm(pv_ref, umcpv)
         for t in range(self.horizon):
@@ -71,8 +72,8 @@ class SalesManager(Shared):
             os.makedirs(dst_folder)
         utils.replicateFile(initial_sales_f, os.path.join(dst_folder, f"sales_S{start_week}.json"))
         with open(initial_sales_f) as fp:
-            pv_ref: dict[str, dict[str, list[int]]] = json.load(fp)
-        sales = copy.deepcopy(pv_ref)
+            init_pv: dict[str, dict[str, list[int]]] = json.load(fp)
+        pv_ref = sales = init_pv
         for w in range(start_week + 1, end_week + 1):     
             if self.pv_dependency:
                 pv_ref = sales 
