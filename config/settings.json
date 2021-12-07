@@ -6,13 +6,13 @@
     "pv_dependency": false,
     "ba_dependency": false,
     "pdp_dependency": true,
-    "rand_pv_stat":  "uniform",
-    "proba_pv_inf": 0.5,
+    "rand_pv_stat":  "minmax",
+    "proba_pv_inf": 0.8,
     "affiliate_pv_range": {
-        "france": 100,
-        "spain": 100,
-        "chili": 100,
-        "australia": 100
+        "france": 50,
+        "spain": 50,
+        "chili": 50,
+        "australia": 50
     },
     "factory_capacity": [1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700],
     "target_stock": {

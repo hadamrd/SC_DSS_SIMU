@@ -39,7 +39,7 @@ class SmoothingFilter(Shared):
                 unsolvable.add(t) 
                 continue
             x1, x2 = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
-            u = 0
+            u = 0.5
             x[t] = round(u * x1 + (1 - u) * x2)
         for idx in unsolvable:
             x[idx] = self.findFirstSolvable(x, unsolvable, idx, start, end)

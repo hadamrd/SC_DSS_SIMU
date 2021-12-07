@@ -9,6 +9,7 @@ if __name__ == "__main__":
     sales_folder        = "sales_history"  
     risk_indicator_f = f"risk_indicators.xlsx"
     start_week          = 2
+    
     end_week            = 42
     smoothing_filter    = SmoothingFilter()
     sales_manager       = SalesManager()

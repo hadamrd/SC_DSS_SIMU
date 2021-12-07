@@ -39,12 +39,12 @@ class SalesManager(Shared):
             rd = x1 if random.random() < self.proba_pv_inf else x2
         elif self.pv_rand_strat == PvRandStrat.uniform:
             rd = x1 + (x2 - x1) * random.random()
-        rd = round(rd / 10) * 10
+        rd = round(rd)
         return rd
 
     def randPv(self, a: str):
         pv_range = self.affiliate_pv_range[a]
-        return 10 * random.randint(0, pv_range//10)
+        return random.randint(0, pv_range)
     
     def getPvPm(self, pv, model):
         cpv = list(utils.accumu(pv))
