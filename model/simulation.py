@@ -41,6 +41,7 @@ class Simulation(Shared):
         product_demand = self.model.cdc_product_demand
         product_dept = self.sumOverAffiliate(self.model.cdc_dept)
         product_demande_ref = self.sumOverAffiliate(demande_ref)
+        capacity = self.model.cdc.capacity
         for p in self.products:
             log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
             with open(log_f.format(p), 'a') as fp:
@@ -54,6 +55,7 @@ class Simulation(Shared):
                 print(format_row.format("demand", *list(utils.accumu(product_demand[p]))[:n]))
                 print(format_row.format("demand ref", *list(utils.accumu(product_demande_ref[p]))[:n]))
                 print("-" * nchars)
+                print(format_row.format("capacity", *list(utils.accumu(capacity[p]))[:n]))
                 print(format_row.format("reception", *list(utils.accumu(reception[p]))[:n]))
                 print(format_row.format("reception ref", *list(utils.accumu(reception_ref[p]))[:n]))
                 print(format_row.format("dept", *product_dept[p][:n]))

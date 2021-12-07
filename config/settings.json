@@ -5,7 +5,7 @@
     "l4n_threshold": 0.5,
     "pv_dependency": false,
     "ba_dependency": false,
-    "pdp_dependency": true,
+    "pdp_dependency": false,
     "rand_pv_stat":  "uniform",
     "proba_pv_inf": 0.5,
     "affiliate_pv_range": {
@@ -26,7 +26,8 @@
         "range": {
             "start": 2,
             "end": 19
-        }
+        },
+        "optimisme": 0
     },
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",

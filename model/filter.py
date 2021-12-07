@@ -1,13 +1,12 @@
 from . import Shared
-from . import RiskManager, Model
-from . import utils
-import math
+from . import RiskManager
 
 class SmoothingFilter(Shared):
 
     def __init__(self) -> None:
         super().__init__()
-        self.params = self.settings["smoothing"]
+        self.range = self.settings["smoothing"]["range"]
+        self.optimisme = self.settings["smoothing"]["optimisme"]
 
     def validateOutput(self, x_in: list[int], x_out: list[int]):
         n = len(x_out)
@@ -25,11 +24,21 @@ class SmoothingFilter(Shared):
             if j not in unsolvable:
                 return x[j]
         return x[idx]
-        
+    
+    def fixBounds(self, x):
+        start = self.range["start"]
+        end = self.range["end"]
+        if start > 0:
+            for t in range(start, end):
+                x[t] = max(x[t-1], x[t])
+        if end < self.real_horizon:
+            for t in range(end-1, start, -1):
+                x[t] = min(x[t], x[t+1])
+    
     def smooth(self, rpm: dict[str, list[int]], dpm: dict[str, list[int]], x_in: list[int]):
         x = x_in.copy()
-        start = self.params["range"]["start"]
-        end = self.params["range"]["end"]
+        start = self.range["start"]
+        end = self.range["end"]
         unsolvable = set()
         for t in range(start, end):
             c, d = rpm["c"][t], rpm["d"][t] 
@@ -38,16 +47,12 @@ class SmoothingFilter(Shared):
             if l4n_min >= self.l4n_threshold:
                 unsolvable.add(t) 
                 continue
-            x1, x2 = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
-            u = 0
-            x[t] = round(u * x1 + (1 - u) * x2)
+            xd, xr = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
+            # if optimisme = 1, algo will follow the min of the demand
+            # else it will try to consume all reception
+            x[t] = round(self.optimisme * xd + (1 - self.optimisme) * xr)
         for idx in unsolvable:
             x[idx] = self.findFirstSolvable(x, unsolvable, idx, start, end)
-        if start > 0:
-            for t in range(start, end):
-                x[t] = max(x[t-1], x[t])
-        if end < self.real_horizon:
-            for t in range(end-1, start, -1):
-                x[t] = min(x[t], x[t+1])
+        self.fixBounds(x)
         self.validateOutput(x_in, x)
         return x

@@ -49,17 +49,20 @@ class SalesManager(Shared):
     def getPvPm(self, pv, model):
         cpv = list(utils.accumu(pv))
         a, b, c, d, rw = model.values()
-        t0 = [rw-1 for rw in rw]
-        f = [cpv[t] - cpv[t0-1] if t0-1> 0 else cpv[t] for t,t0 in zip(range(self.horizon), t0)]
-        A = [cpv + f*a for cpv,f,a in zip(cpv,f,a)]
-        B = [cpv + f*b for cpv,f,b in zip(cpv,f,b)]
-        C = [cpv + f*c for cpv,f,c in zip(cpv,f,c)]
-        D = [cpv + f*d for cpv,f,d in zip(cpv,f,d)]
-        return A, B, C, D
+        t0_ax = map(lambda x: x-1, rw)
+        t_ax = range(self.horizon)
+        f = [cpv[t] - cpv[t0-1] if t0-1> 0 else cpv[t] for t,t0 in zip(t_ax, t0_ax)]
+        dist = {    
+            "A": [cpv + f*a for cpv,f,a in zip(cpv,f,a)],
+            "B": [cpv + f*b for cpv,f,b in zip(cpv,f,b)],
+            "C": [cpv + f*c for cpv,f,c in zip(cpv,f,c)],
+            "D": [cpv + f*d for cpv,f,d in zip(cpv,f,d)]
+        } 
+        return dist
             
     def genRandSalesForcast(self, umcpv, pv_ref):
         acpv = [0 for _ in range(self.horizon)]
-        A, B, C, D = self.getPvPm(pv_ref, umcpv)
+        A, B, C, D = self.getPvPm(pv_ref, umcpv).values()
         for t in range(self.horizon):
             rand_cpv = self.pickRandCPV(A[t], B[t], C[t], D[t])
             acpv[t] = max(rand_cpv, acpv[t-1] if t>0 else 0)

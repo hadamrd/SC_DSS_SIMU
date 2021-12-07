@@ -41,6 +41,8 @@ class CDC(Shared):
                         self.supply[a][p][t] = self.dipatchSupply(self.capacity, self.raw_demand, a, p, t)
                     self.dept[a][p][t] = self.raw_demand[a][p][t] - self.supply[a][p][t]
                 self.product_supply[p][t] = sum([self.supply[a][p][t] for a in self.itProductAff(p)])
+                # print(t, a, p, sum([prev_supply[a][p][t] for a in self.itProductAff(p)]), self.product_supply[p][t])
+                # raise
                 proj_stock = self.capacity[p][t] - self.product_supply[p][t]
         return self.supply, self.product_supply, self.dept
                     
