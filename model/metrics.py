@@ -6,26 +6,24 @@ from model.risk import RiskManager
 from . import History, utils
 
 
-def periodMean(Q_history: list[list[int]], t: int, fh: int):
-    n = len(Q_history[0])
+def periodMean(q_hist: list[list[int]], t: int, fh: int):
+    n = len(q_hist[0])
     res = 0
     for k in range(n):
-        res += Q_history[t - k][k]
+        res += q_hist[t - k][k]
     return res / (n - fh + 1)
 
-def getMeanAbsDiff(Q_history: list[dict[str, list[int]]], t: int, fh: int, h: int, p: str) -> float:
+def getMeanAbsDiff(cq_hist: list[dict[str, list[int]]], t: int, fh: int, h: int, p: str) -> float:
     res = 0
-    for k in range(h-1):
+    for k in range(fh-1, h-2):
         y = t - k
-        if y < h - fh:
-            res += abs(Q_history[y][p][k] - Q_history[y-1][p][k+1] + Q_history[y-1][p][0])
-    return res / (h - fh)
+        res += abs(cq_hist[y][p][k] - cq_hist[y-1][p][k+1] + cq_hist[y-1][p][0])
+    return res / (h - (fh-1) - 2)
 
-def getMeanVarMetric(Q_metric: dict, size):
-    Q_metric_mean   = {p: sum(Q_metric[p]) / size for p in Q_metric}
-    Q_metric_var    = {p: math.sqrt(sum([(Q_metric[p][t] - Q_metric_mean[p])**2
-    for t in range(size)]) / size) / Q_metric_mean[p]  if Q_metric_mean[p] != 0 else 0 for p in Q_metric}
-    return {"mean": Q_metric_mean, "var": Q_metric_var}
+def getMeanVarMetric(q_metric: dict):
+    q_metric_mean   = {p: utils.mean(q_metric[p]) for p in q_metric}
+    q_metric_var    = {p: utils.var(q_metric[p], q_metric_mean[p]) for p in q_metric}
+    return {"mean": q_metric_mean, "var": q_metric_var}
 
 def exportToExcel(hist1: History, hist2: History, dst_f):
     wb = openpyxl.load_workbook(hist1.indicators_template_f)
@@ -43,7 +41,7 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
             sh.cell(curr_row, col + 6).value = hist2.metrics[w]["in"]["severity"][p]
             sh.cell(curr_row, col + 7).value = hist1.metrics[w]["in"]["severity"][p]
             sh.cell(curr_row, col + 8).value = hist1.metrics[w]["out"]["severity"][p]
-            
+
             sh.cell(curr_row, col + 11).value = hist2.metrics[w]["in"]["frequency"][p]
             sh.cell(curr_row, col + 12).value = hist1.metrics[w]["in"]["frequency"][p]
             sh.cell(curr_row, col + 13).value = hist1.metrics[w]["out"]["frequency"][p]
@@ -54,13 +52,12 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
             curr_row+=1
     curr_row = 3
     col = 23
-    n = hist1.horizon
+    n = hist1.real_horizon
     fh = hist1.fixed_horizon
     cpa1_metric = {p: [getMeanAbsDiff(hist1.cproduct_supply, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
     cpa2_metric = {p: [getMeanAbsDiff(hist2.cproduct_supply, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
-    
-    cpa1_var = getMeanVarMetric(cpa1_metric, n)
-    cpa2_var = getMeanVarMetric(cpa2_metric, n)
+    cpa1_var = getMeanVarMetric(cpa1_metric)
+    cpa2_var = getMeanVarMetric(cpa2_metric)
     for p in products:
         sh.cell(curr_row, col).value = cpa1_var['var'][p]
         sh.cell(curr_row, col + 1).value = cpa2_var['var'][p]

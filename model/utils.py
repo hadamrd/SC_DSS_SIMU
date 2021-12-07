@@ -1,6 +1,18 @@
 import re
 import json
+import math
 
+
+def mean(q):
+    size = len(q)
+    return sum(q) / size
+
+def var(q, m):
+    size = len(q)
+    sigma = sum([(q[t] - m)**2 for t in range(size)]) / size
+    var = math.sqrt(sigma)
+    normalized_var = var / m if m!=0 else 0
+    return normalized_var
 
 def writeRow(sh, row: int, start_col: int, lis: list):
     for t, v in enumerate(lis):

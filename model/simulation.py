@@ -29,6 +29,9 @@ class Simulation(Shared):
             if os.path.exists(log_f):
                 open(log_f.format(p), 'w').close()
 
+    def logMetric(self, metrics):
+        pass
+    
     def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception, demande_ref, reception_ref):      
         n = self.real_horizon          
         nchars = 16 + 7 * n
@@ -86,7 +89,7 @@ class Simulation(Shared):
             demand = self.model.cdc_demand
 
             supply = copy.deepcopy(self.model.cdc_supply)
-            product_supply = self.model.cdc_product_supply
+            product_supply = self.model.cdc_product_supply.copy()
             initial_stock = self.model.getCDCInitialStock()
 
             # calculate ref plans
