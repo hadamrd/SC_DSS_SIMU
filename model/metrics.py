@@ -21,7 +21,7 @@ def getMeanAbsDiff(cq_hist: list[dict[str, list[int]]], t: int, fh: int, h: int,
     return res / (h - (fh-1) - 2)
 
 def getMeanVarMetric(q_metric: dict):
-    q_metric_mean   = {p: utils.mean(q_metric[p]) for p in q_metric}
+    q_metric_mean   = {p: utils.getMean(q_metric[p]) for p in q_metric}
     q_metric_var    = {p: utils.var(q_metric[p], q_metric_mean[p]) for p in q_metric}
     return {"mean": q_metric_mean, "var": q_metric_var}
 

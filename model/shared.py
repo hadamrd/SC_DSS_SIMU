@@ -81,3 +81,9 @@ class Shared:
                         supply[a][p][t] = self.dipatchSupply(capacity, raw_demand, a, p, t)
                     dept[a][p][t] = raw_demand[a][p][t] - supply[a][p][t]
         return supply
+
+    def getEmptyAffQ(self, value=None):
+        return {a: {p: [value] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
+    
+    def getEmptyProductQ(self, value=None):
+        return {p: [value] * self.horizon for p in self.products}

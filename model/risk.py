@@ -27,19 +27,19 @@ class RiskManager(Shared):
             res["adaptability"][p]  = 1 - l4n[-1]
         return res
 
-    def getDitributions(self, demand, reception, demand_ref, reception_ref, initial_stock):
+    def getDitributions(self, cdemand, creception, cdemand_ref, creception_ref, initial_stock):
         rpm = {p: None for p in self.products}
         dpm = {p: None for p in self.products}
         for p in self.products:
             s0 = initial_stock[p]
             if self.pdp_dependency:
-                rpm[p] = self.getRpm(reception, p, s0)
+                rpm[p] = self.getRpm(creception, p, s0)
             else:
-                rpm[p] = self.getRpm(reception_ref, p, s0)
+                rpm[p] = self.getRpm(creception_ref, p, s0)
             if self.ba_dependency:
-                dpm[p] = self.getDpm(demand, p)
+                dpm[p] = self.getDpm(cdemand, p)
             else:
-                dpm[p] = self.getDpm(demand_ref, p)
+                dpm[p] = self.getDpm(cdemand_ref, p)
         return dpm, rpm
 
     def loadRModel(self, file_name: str) -> None:
@@ -71,19 +71,18 @@ class RiskManager(Shared):
             self.d_model[aff][product][param] = quantity
             r += 1
 
-    def getFuzzyDist(self, q, model, n, s0=0):
+    def getFuzzyDist(self, cq, model, n, s0=0):
         params = ["a", "b", "c", "d"]
-        Q = list(utils.accumu(q[:n]))
         dist = {param: [None] * n for param in params}
         for t in range(n):
             t0 = model["RefWeek"][t] - 1
             model_type = model["ModelType"][t] 
             for param in params:
                 alpha_t = model[param][t]
-                F_t = Q[t] - Q[t0-1] if t0-1 > 0 else Q[t]
+                F_t = cq[t] - cq[t0-1] if t0-1 > 0 else cq[t]
                 if model_type == "I1":
                     F_t /= t - t0 + 1
-                dist[param][t] = round(Q[t] + alpha_t * F_t + s0)
+                dist[param][t] = round(cq[t] + alpha_t * F_t + s0)
         for t in range(n):
             if t > 0:
                 dist["a"][t] = max(dist["a"][t-1], dist["a"][t]) 
@@ -94,15 +93,15 @@ class RiskManager(Shared):
                 dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
         return dist
 
-    def getDpm(self, d, p) -> dict[str, dict[str, list[int]]]:
+    def getDpm(self, cd, p) -> dict[str, dict[str, list[int]]]:
         n = self.real_horizon
         params = ["a", "b", "c", "d"]
-        dist = {a: self.getFuzzyDist(d[a][p], self.d_model[a][p], n) for a in self.itProductAff(p)}
+        dist = {a: self.getFuzzyDist(cd[a][p], self.d_model[a][p], n) for a in self.itProductAff(p)}
         return {param: [sum([dist[a][param][t] for a in dist]) for t in range(n)] for param in params}
 
-    def getRpm(self, r, p, s0) ->  dict[str, list[int]]:
+    def getRpm(self, cr, p, s0) ->  dict[str, list[int]]:
         n = self.real_horizon
-        dist =  self.getFuzzyDist(r[p], self.r_model[p], n, s0)
+        dist =  self.getFuzzyDist(cr[p], self.r_model[p], n, s0)
         return dist
     
     @staticmethod

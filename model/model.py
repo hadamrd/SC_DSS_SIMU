@@ -186,3 +186,4 @@ class Model(Shared):
             for a, aff in self.affiliates.items()
         }
         return cdc_prev_supply
+    

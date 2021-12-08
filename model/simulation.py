@@ -28,20 +28,17 @@ class Simulation(Shared):
             log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
             if os.path.exists(log_f):
                 open(log_f.format(p), 'w').close()
-
-    def logMetric(self, metrics):
-        pass
     
-    def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception, demande_ref, reception_ref):      
+    def log_state(self, k, dpm, rpm, cproduct_supply, cproduct_supply_out, cdemand, creception, cdemande_ref, creception_ref):      
         n = self.real_horizon          
         nchars = 16 + 7 * n
         format_row = "{:>16}" + "{:>7}" * n
         original_stdout = sys.stdout # Save a reference to the original standard output
         product_sales_forcast = self.model.getProductSalesForcast()
-        product_demand = self.model.cdc_product_demand
+        cproduct_demand = self.sumOverAffiliate(cdemand)
         product_dept = self.sumOverAffiliate(self.model.cdc_dept)
-        product_demande_ref = self.sumOverAffiliate(demande_ref)
         capacity = self.model.cdc.capacity
+        cproduct_demande_ref = self.sumOverAffiliate(cdemande_ref)
         for p in self.products:
             log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
             with open(log_f.format(p), 'a') as fp:
@@ -52,12 +49,12 @@ class Simulation(Shared):
                 print(format_row.format("week", *[f"W{t}" for t in range(k, k + n)]))
                 print("-" * nchars)
                 print(format_row.format("sales", *list(utils.accumu(product_sales_forcast[p]))[:n]))
-                print(format_row.format("demand", *list(utils.accumu(product_demand[p]))[:n]))
-                print(format_row.format("demand ref", *list(utils.accumu(product_demande_ref[p]))[:n]))
+                print(format_row.format("demand", *cproduct_demand[p][:n]))
+                print(format_row.format("demand ref", *cproduct_demande_ref[p][:n]))
                 print("-" * nchars)
                 print(format_row.format("capacity", *list(utils.accumu(capacity[p]))[:n]))
-                print(format_row.format("reception", *list(utils.accumu(reception[p]))[:n]))
-                print(format_row.format("reception ref", *list(utils.accumu(reception_ref[p]))[:n]))
+                print(format_row.format("reception", *creception[p][:n]))
+                print(format_row.format("reception ref", *creception_ref[p][:n]))
                 print(format_row.format("dept", *product_dept[p][:n]))
                 print("-" * nchars)
                 print(format_row.format("A demand ref", *dpm[p]["a"][:n]))
@@ -77,6 +74,12 @@ class Simulation(Shared):
         with open(os.path.join(self.inputs_folder, f"input_S{start_week}.json")) as fp:
             input = json.load(fp)
 
+        creception = self.getEmptyProductQ(0)
+        cdemand = self.getEmptyAffQ(0)
+        
+        creception_ref = self.getEmptyProductQ(0)
+        cdemand_ref = self.getEmptyAffQ(0)
+        
         for k in range(start_week, end_week + 1):
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
             # snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
@@ -103,12 +106,19 @@ class Simulation(Shared):
                     reception_ref[p] = reception_ref[p][1:] + [reception[p][self.horizon-1]]
                 for a, p in self.itParams():
                     demand_ref[a][p] = demand_ref[a][p][1:] + [demand[a][p][self.horizon-1]]
-            
+
+            cdemand = {a: {p: list(utils.accumu(demand[a][p], cdemand[a][p][0])) for p in  self.affiliate_products[a]} for a in self.affiliate_name}
+            creception = {p: list(utils.accumu(reception[p], creception[p][0])) for p in self.products}
+
+            cdemand_ref = {a: {p: list(utils.accumu(demand_ref[a][p], cdemand_ref[a][p][0])) for p in  self.affiliate_products[a]} for a in self.affiliate_name}
+            creception_ref = {p: list(utils.accumu(reception[p], creception_ref[p][0])) for p in self.products}
+
             # calculate distributions and metrics
-            dpm, rpm = self.risk_manager.getDitributions(demand, reception, demand_ref, reception_ref, initial_stock)
+            dpm, rpm = self.risk_manager.getDitributions(cdemand, creception, cdemand_ref, creception_ref, initial_stock)
 
             # # cumulate supply plan
             cproduct_supply = {p: list(utils.accumu(product_supply[p])) for p in self.products}
+            
             # # Create data snapshot
             snapshot = self.model.getSnapShot()
             snapshot["cproduct_supply"] = cproduct_supply
@@ -133,7 +143,7 @@ class Simulation(Shared):
                 snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply_out)
 
                 # log simulation state 
-                self.log_state(k, dpm, rpm, cproduct_supply, cproduct_supply_out, reception, demand_ref, reception_ref)
+                self.log_state(k, dpm, rpm, cproduct_supply, cproduct_supply_out, cdemand, creception, cdemand_ref, creception_ref)
 
             # utils.saveToFile(snapshot, snapshot_f)
 

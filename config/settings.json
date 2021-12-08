@@ -6,7 +6,7 @@
     "pv_dependency": false,
     "ba_dependency": false,
     "pdp_dependency": false,
-    "rand_pv_stat":  "uniform",
+    "rand_pv_stat":  "minmax",
     "proba_pv_inf": 0.5,
     "affiliate_pv_range": {
         "france": 100,

@@ -74,15 +74,12 @@ class SalesManager(Shared):
         if not os.path.exists(dst_folder):
             os.makedirs(dst_folder)
         utils.replicateFile(initial_sales_f, os.path.join(dst_folder, f"sales_S{start_week}.json"))
-        with open(initial_sales_f) as fp:
-            init_pv: dict[str, dict[str, list[int]]] = json.load(fp)
-        pv_ref = sales = init_pv
-        for w in range(start_week + 1, end_week + 1):     
-            if self.pv_dependency:
-                pv_ref = sales 
+        nbr_weeks = end_week - start_week + 1
+        cpv_ref = {a: {p: list(utils.accumu([self.randPv(a) for _ in range(self.horizon + nbr_weeks)])) for p in self.affiliate_products[a]} for a in self.affiliate_name}
+        sales = self.getEmptyAffQ()
+        for w in range(start_week + 1, end_week + 1):
             for a, p in self.itParams():
-                pv_ref[a][p] = pv_ref[a][p][1:] + [self.randPv(a)]
-                sales[a][p] = self.genRandSalesForcast(self.uncertainty_model[a], pv_ref[a][p])
+                sales[a][p] = self.genRandSalesForcast(self.uncertainty_model[a], cpv_ref[a][p][w:w+self.horizon])
             dst_file = os.path.join(dst_folder, f"sales_S{w}.json")
             with open(dst_file, "w") as fp:
                 json.dump(sales, fp)

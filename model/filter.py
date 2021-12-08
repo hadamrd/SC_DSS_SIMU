@@ -14,6 +14,7 @@ class SmoothingFilter(Shared):
             raise Exception(f"Solution size {len(x_out)} != input size {len(x_in)}!")
         for t in range(1, n):
             if x_out[t] < x_out[t-1]:
+                print(x_out)
                 raise Exception(f"x_out[{t}] = {x_out[t]} < x_out[{t-1}] = {x_out[t-1]}!")
     
     def findFirstSolvable(self, x, unsolvable, idx, start, end):
@@ -47,12 +48,12 @@ class SmoothingFilter(Shared):
             if l4n_min >= self.l4n_threshold:
                 unsolvable.add(t) 
                 continue
-            xd, xr = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
-            # if optimisme = 1, algo will follow the min of the demand
-            # else it will try to consume all reception
-            x[t] = round(self.optimisme * xd + (1 - self.optimisme) * xr)
+            x1, x2 = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
+            u = 1
+            x[t] = round(u * x1 + (1 - u) * x2)
         for idx in unsolvable:
             x[idx] = self.findFirstSolvable(x, unsolvable, idx, start, end)
-        self.fixBounds(x)
+        for t in range(start, self.real_horizon):
+            x[t] = max(x[t-1], x[t])
         self.validateOutput(x_in, x)
         return x
