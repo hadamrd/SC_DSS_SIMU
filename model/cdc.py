@@ -1,23 +1,22 @@
 
 from . import Shared
-import math
 
 class CDC(Shared):
     def __init__(self) -> None:
         super().__init__()
-        self.target_stock = {p: [self.target_stock["cdc"]] * self.horizon for p in self.products}
-        self.dept = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        self.initial_stock = {p: [None] * self.horizon for p in self.products}
-        self.projected_stock = {p: [None] * self.horizon for p in self.products}
-        self.product_supply = {p: [None] * self.horizon for p in self.products}
-        self.capacity = {p: [None] * self.horizon for p in self.products}
-        self.raw_demand = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        self.supply = {a: {p: [None] * self.horizon for p in self.affiliate_products[a]} for a in self.affiliate_name}
-        self.prod_demand = {p: [None] * self.horizon for p in self.products}
-        self.reception = {p: [None] * self.horizon for p in self.products}
+        self.target_stock = {p: [self.settings["cdc"]["target_stock"]] * self.horizon for p in self.products}
+        self.dept = self.getEmptyAffQ(None)
+        self.initial_stock = self.getEmptyProductQ(None)
+        self.projected_stock = self.getEmptyProductQ(None)
+        self.product_supply = self.getEmptyProductQ(None)
+        self.capacity = self.getEmptyProductQ(None)
+        self.raw_demand = self.getEmptyAffQ(None)
+        self.supply = self.getEmptyAffQ(None)
+        self.prod_demand = self.getEmptyProductQ(None)
+        self.reception = self.getEmptyProductQ(None)
     
     def getProdDemand(self, prev_production, product_demand):
-        bp = {p: [0] * self.horizon for p in self.products}
+        bp = self.getEmptyProductQ(0)
         for p in self.products:
             proj_stock = self.initial_stock[p]
             for t in range(self.horizon):
@@ -26,12 +25,10 @@ class CDC(Shared):
                 proj_stock += bp[p][t] + pip - product_demand[p][t]
         return bp
 
-    def run(self, prev_supply, demand, reception):
-        # calculate supply plan
+    def getAffSupply(self, prev_supply, demand, reception):
         for p in self.products:
-            proj_stock = self.initial_stock[p]
             for t in range(self.horizon):
-                self.capacity[p][t] = proj_stock + reception[p][t]
+                self.capacity[p][t] = (self.projected_stock[p][t-1] if t>0 else self.initial_stock[p]) + reception[p][t]
                 for a in self.itProductAff(p):
                     self.raw_demand[a][p][t] = demand[a][p][t] + (self.dept[a][p][t-1] if t>0 else 0)
                 for a in self.itProductAff(p):    
@@ -41,8 +38,6 @@ class CDC(Shared):
                         self.supply[a][p][t] = self.dipatchSupply(self.capacity, self.raw_demand, a, p, t)
                     self.dept[a][p][t] = self.raw_demand[a][p][t] - self.supply[a][p][t]
                 self.product_supply[p][t] = sum([self.supply[a][p][t] for a in self.itProductAff(p)])
-                # print(t, a, p, sum([prev_supply[a][p][t] for a in self.itProductAff(p)]), self.product_supply[p][t])
-                # raise
-                proj_stock = self.capacity[p][t] - self.product_supply[p][t]
+                self.projected_stock[p][t] = self.capacity[p][t] - self.product_supply[p][t]
         return self.supply, self.product_supply, self.dept
                     

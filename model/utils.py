@@ -5,21 +5,6 @@ import random
 import numpy as np 
 
 
-def getMean(q):
-    size = len(q)
-    return sum(q) / size
-
-def var(q, m):
-    size = len(q)
-    sigma = sum([(q[t] - m)**2 for t in range(size)]) / size
-    var = math.sqrt(sigma)
-    return var
-
-def getSigma(q, m):
-    size = len(q)
-    sigma = sum([(q[t] - m)**2 for t in range(size)]) / size
-    return sigma
-
 def writeRow(sh, row: int, start_col: int, lis: list):
     for t, v in enumerate(lis):
         sh.cell(row, start_col + t).value = v
@@ -72,16 +57,19 @@ def replicateFile(src, dst):
 
 def show(name, q):
     format_row = "{:>7}" + "{:>7}" * len(q)
-    print(format_row.format(name, *[round(x, 2) for x in q]))
+    print(format_row.format(name, *q))
 
 def showModel(model):
     for k, v in model.items():
-        show(k, v)
+        if k not in ["RefWeek", "ModelType"]:
+            show(k, [round(_, 2) for _ in v])
+        else:
+            show(k, v)
         
 def randQ(size_q, q0):
     return np.random.poisson(q0, size_q)
 
-def genUCM(n, model_args):
+def genUCM(model_args):
     params = ["a", "b", "c", "d"]
     model = {param: [] for param in params}
     model["RefWeek"] = []
@@ -90,20 +78,20 @@ def genUCM(n, model_args):
         size = part["size"]
         for param in params:
             model[param] += [part[param]] * size
-        model["RefWeek"] += [s + 1] * size
+        model["RefWeek"] += [s] * size
         s += size
     return model
 
 def getPDist(cq, model: dict):
     a, b, c, d, rw = model.values()
-    t0 = [rw-1 for rw in rw]
-    size = len(t0)
-    f = [cq[t] - cq[t0-1] if t0-1> 0 else cq[t] for t,t0 in zip(range(size), t0)]
-    A = [round(cpv + f * a) for cpv, f, a in zip(cq, f, a)]
-    B = [round(cpv + f * b) for cpv, f, b in zip(cq, f, b)]
-    C = [round(cpv + f * c) for cpv, f, c in zip(cq, f, c)]
-    D = [round(cpv + f * d) for cpv, f, d in zip(cq, f, d)]
-    return {param: dist for param, dist in zip(["A", "B", "C", "D"], [A, B, C, D])}
+    size = len(rw)
+    f = [cq[t] - cq[t0 - 1] if t0 > 0 else cq[t] for t, t0 in zip(range(size), rw)]
+    return {
+        "A": [round(cpv + f * a) for cpv, f, a in zip(cq, f, a)],
+        "B": [round(cpv + f * b) for cpv, f, b in zip(cq, f, b)],
+        "C": [round(cpv + f * c) for cpv, f, c in zip(cq, f, c)],
+        "D": [round(cpv + f * d) for cpv, f, d in zip(cq, f, d)]
+    }
 
 def pickRand(a, b, c, d):
     alpha = random.random()
@@ -111,8 +99,8 @@ def pickRand(a, b, c, d):
     x2 = round(d - alpha * (d - c))
     return x1 if random.random() < 0.5 else x2
     
-def genRandCQ(model: dict, q: list):
-    cqpm = getPDist(q, model)
+def genRandCQ(ucm: dict, q: list):
+    cqpm = getPDist(q, ucm)
     n = len(q)
     cres = [0 for _ in range(n)]
     A, B, C, D = cqpm.values()
@@ -121,34 +109,23 @@ def genRandCQ(model: dict, q: list):
         cres[t] = max(rand_q, cres[t-1] if t>0 else 0)
     return cres
 
-def genRandCQHist(size_h, size_q, ucm, q0):
-    hist = [None] * size_h
-    cq_ref = list(accumu(randQ(size_q + size_h, q0)))
-    for w in range(size_h):
+def genRandCQHist(size, ucm, q0):
+    size_q = len(ucm["a"])
+    hist = [None] * size
+    cq_ref = list(accumu(randQ(size_q + size, q0)))
+    for w in range(size):
         hist[w] = genRandCQ(ucm, cq_ref[w:w + size_q])
     return hist 
 
-def getDiffHist(cq_hist):
-    q_size = len(cq_hist[0])
-    res = [[None] * q_size] * (q_size -1)
-    for t in range(q_size - 1, 2 * q_size - 1):
-        for k in range(q_size - 1):
-            y = t - k
-            res[k][t - (q_size - 1)] = cq_hist[y][k] - cq_hist[y-1][k+1]
+def genRandQHist(size, ucm, q0):
+    res = [None] * size
+    chist = genRandCQHist(size, ucm, q0)
+    for w in range(size):
+        res[w] = diff(chist[w]) 
+        res[w][0] -= res[w-1][0] if w > 0 else 0
     return res
+    
 
-def getMeanVarDiffHist(cqdh):
-    nrows = len(cqdh)
-    mean_ = 0
-    for w in range(nrows):
-        mean_ += getMean(cqdh[w])
-    mean_ /= nrows
-    sigma_ = 0
-    for w in range(nrows):
-        sigma_ += getSigma(cqdh[w], mean_)
-    var = math.sqrt(sigma_ / nrows)
-    return mean_, var
-        
 
         
         

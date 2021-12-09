@@ -11,7 +11,7 @@ class Model(Shared):
         self.prev_production = None
         self.prev_supply = None
         self.sales_forcast = None
-        self.affiliates = {name: Affiliate(name) for name in self.affiliate_name}
+        self.affiliates = {name: Affiliate(name) for name in self.itAffiliates()}
         self.factory = Factory()
         self.cdc = CDC()
 
@@ -46,18 +46,14 @@ class Model(Shared):
                     (self.cdc.supply[a][p][0] if aff.delivery_time==0 else 0) - self.sales_forcast[a][p][0] 
                 for p in aff.products
             } 
-        initial_stock["cdc"]= {}
-        for p in self.products:
-            initial_stock["cdc"][p] = self.cdc.initial_stock[p] + self.cdc_reception[p][0] - self.cdc_product_supply[p][0]
-            if initial_stock["cdc"][p] < 0:
-                raise Exception("CDC cant have negative stock")
+        initial_stock["cdc"] = {p: self.cdc.projected_stock[p][0] for p in self.products}
         return initial_stock
 
     def getNextSupply(self):
         next_supply = {}
         for a, aff in self.affiliates.items():
             next_supply[a] = {}
-            for p in self.affiliate_products[a]:
+            for p in self.itAffProducts(a):
                 next_supply[a][p] = self.prev_supply[a][p][1:aff.delivery_time+1] +\
                     self.cdc_supply[a][p][1:self.horizon-aff.delivery_time] +\
                         [self.cdc_supply[a][p][self.horizon-aff.delivery_time-1]]
@@ -83,7 +79,7 @@ class Model(Shared):
     def runWeek(self):
         for a, affiliate in self.affiliates.items():
             affiliate.initial_stock = self.initial_stock[a]
-            affiliate.run(self.sales_forcast[a], self.prev_supply[a])
+            affiliate.getDemand(self.sales_forcast[a], self.prev_supply[a])
         self.cdc.initial_stock = self.getCDCInitialStock()
         self.cdc_demand = self.getCDCDemand()
         self.cdc_prev_supply = self.getCDCPrevSupply()
@@ -91,9 +87,9 @@ class Model(Shared):
         self.cdc_prod_demand = self.cdc.getProdDemand(self.prev_production, self.cdc_product_demand)
         self.factory_prod_demand = {p: self.cdc_prod_demand[p][self.prod_time:] + [0] * self.prod_time for p in self.products}
         self.factory_prev_production = {p: self.prev_production[p][self.prod_time:] + [0] * self.prod_time for p in self.products}
-        self.factory.run(self.factory_prod_demand, self.factory_prev_production)
+        self.factory.getProduction(self.factory_prod_demand, self.factory_prev_production)
         self.cdc_reception = self.getCDCReception()
-        self.cdc_supply, self.cdc_product_supply, self.cdc_dept = self.cdc.run(self.cdc_prev_supply, self.cdc_demand, self.cdc_reception)
+        self.cdc_supply, self.cdc_product_supply, self.cdc_dept = self.cdc.getAffSupply(self.cdc_prev_supply, self.cdc_demand, self.cdc_reception)
 
     def getSnapShot(self):
         snap = {
@@ -151,7 +147,7 @@ class Model(Shared):
         i = 0
         while sheet.cell(2 + i, 1).value:
             quantity = int(sheet.cell(2 + i, 2).value)
-            affiliate = self.affiliate_code[sheet.cell(2 + i, 3).value]
+            affiliate = self.getAffByCode(sheet.cell(2 + i, 3).value)
             week = int(sheet.cell(2 + i, 6).value.split("/")[0][1:])
             product = sheet.cell(2 + i, 12).value
             if affiliate not in demand:
@@ -182,7 +178,7 @@ class Model(Shared):
 
     def getCDCPrevSupply(self):
         cdc_prev_supply = {a: 
-            {p: self.prev_supply[a][p][aff.delivery_time:] + [0] * (self.horizon-aff.delivery_time) for p in self.affiliate_products[a]}     
+            {p: self.prev_supply[a][p][aff.delivery_time:] + [0] * (self.horizon-aff.delivery_time) for p in self.itAffProducts(a)}     
             for a, aff in self.affiliates.items()
         }
         return cdc_prev_supply

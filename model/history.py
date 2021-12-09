@@ -80,8 +80,8 @@ class History(Shared):
         wb = openpyxl.load_workbook(self.history_template_f)
         wb.remove_sheet(wb["PDP"])
         wb.remove_sheet(wb["BP"])
-        for a in self.affiliate_name:
-            for p in self.affiliate_products[a]:
+        for a in self.itAffiliates():
+            for p in self.itAffProducts(a):
                 dst_file = os.path.join(results_folder, f"{prefix}_{a}_{p}_history.xlsx")
                 for w in range(self.nbr_weeks):
                     for t in range(self.horizon):

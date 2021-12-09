@@ -71,22 +71,25 @@ class Simulation(Shared):
     def generateHistory(self, start_week: int, end_week: int, smoothing_filter: SmoothingFilter=None):
         self.flushLogs()
 
-        with open(os.path.join(self.inputs_folder, f"input_S{start_week}.json")) as fp:
-            input = json.load(fp)
-
         creception = self.getEmptyProductQ(0)
         cdemand = self.getEmptyAffQ(0)
-        
         creception_ref = self.getEmptyProductQ(0)
         cdemand_ref = self.getEmptyAffQ(0)
-        
+        cproduct_supply = self.getEmptyProductQ(0)
+        initial_stock = {a: {p: 0 for p in self.itAffProducts(a)} for a in self.itAffiliates()}
+        initial_stock["cdc"] = {p: 0 for p in self.products}
+        input = {
+            "prev_production": self.sumOverAffiliate(self.sales_history[0]),
+            "prev_supply": self.sales_history[0],
+            "initial_stock": initial_stock,
+            "week": 0,
+        }
         for k in range(start_week, end_week + 1):
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
             # snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
 
-            sales_f = os.path.join(self.sales_folder, f"sales_S{k}.json")
             self.model.loadWeekInput(input_dict=input)
-            self.model.loadSalesForcast(sales_f)
+            self.model.sales_forcast = self.sales_history[k]
             self.model.runWeek()
             
             # get model cdc outputs
@@ -107,18 +110,15 @@ class Simulation(Shared):
                 for a, p in self.itParams():
                     demand_ref[a][p] = demand_ref[a][p][1:] + [demand[a][p][self.horizon-1]]
 
-            cdemand = {a: {p: list(utils.accumu(demand[a][p], cdemand[a][p][0])) for p in  self.affiliate_products[a]} for a in self.affiliate_name}
+            cdemand = {a: {p: list(utils.accumu(demand[a][p], cdemand[a][p][0])) for p in  self.itAffProducts(a)} for a in self.itAffiliates()}
             creception = {p: list(utils.accumu(reception[p], creception[p][0])) for p in self.products}
-
-            cdemand_ref = {a: {p: list(utils.accumu(demand_ref[a][p], cdemand_ref[a][p][0])) for p in  self.affiliate_products[a]} for a in self.affiliate_name}
+            cdemand_ref = {a: {p: list(utils.accumu(demand_ref[a][p], cdemand_ref[a][p][0])) for p in  self.itAffProducts(a)} for a in self.itAffiliates()}
             creception_ref = {p: list(utils.accumu(reception[p], creception_ref[p][0])) for p in self.products}
-
-            # calculate distributions and metrics
-            dpm, rpm = self.risk_manager.getDitributions(cdemand, creception, cdemand_ref, creception_ref, initial_stock)
-
-            # # cumulate supply plan
-            cproduct_supply = {p: list(utils.accumu(product_supply[p])) for p in self.products}
+            cproduct_supply = {p: list(utils.accumu(product_supply[p], cproduct_supply[p][0])) for p in self.products}
             
+            # calculate distributions and metrics
+            dpm, rpm = self.risk_manager.getDitributions(cdemand_ref, creception_ref, initial_stock)
+
             # # Create data snapshot
             snapshot = self.model.getSnapShot()
             snapshot["cproduct_supply"] = cproduct_supply
@@ -153,11 +153,11 @@ class Simulation(Shared):
             # generate next week inputs
             input = self.model.generateNextWeekInput(next_input_f)
 
-    def run(self, initial_input_f, start_week, end_week, sales_folder, pa_filter=None):
+    def run(self, sales_history, start_week, end_week, pa_filter=None):
         self.history_folder  = f"{self.name}/history"
         self.inputs_folder   = f"{self.name}/inputs"
         self.results_folder  = f"{self.name}/results"
-        self.sales_folder    = sales_folder
+        self.sales_history   = sales_history
         self.sim_history.init(start_week, end_week, pa_filter)
 
         if not os.path.exists(self.name):
@@ -166,8 +166,6 @@ class Simulation(Shared):
             os.mkdir(self.history_folder)
         if not os.path.exists(self.inputs_folder):
             os.mkdir(self.inputs_folder)
-            
-        utils.replicateFile(initial_input_f, os.path.join(self.inputs_folder, "input_S2.json"))
 
         print("Generating simu history ... ", end="")
         self.generateHistory(
@@ -177,11 +175,11 @@ class Simulation(Shared):
         )
         print("Finished")
 
-        print("Exporting history to excel files ... ", end="")
-        self.sim_history.exportToExcel(
-            prefix=Simulation.count,
-            results_folder=self.results_folder
-        )
-        print("Finished")
+        # print("Exporting history to excel files ... ", end="")
+        # self.sim_history.exportToExcel(
+        #     prefix=Simulation.count,
+        #     results_folder=self.results_folder
+        # )
+        # print("Finished")
 
         Simulation.count += 1

@@ -1,13 +1,13 @@
-import math
 from . import Shared
 
 class Factory(Shared):
+    
     def __init__(self) -> None:
         super().__init__()
         self.factory_capacity: list[int] = self.settings["factory_capacity"]
-        self.production = {p: [0] * self.horizon for p in self.products}
-        self.dept = {p: [0] * self.horizon for p in self.products}
-        self.raw_demand = {p: [0] * self.horizon for p in self.products}
+        self.production = self.getEmptyProductQ(0)
+        self.dept = self.getEmptyProductQ(0)
+        self.raw_demand = self.getEmptyProductQ(0)
     
     def dispatchProduction(self, raw_demand, p, t):
         if raw_demand[p][t] < 0:
@@ -18,7 +18,7 @@ class Factory(Shared):
         else:
             return raw_demand[p][t]
 
-    def run(self, demand, prev_production):
+    def getProduction(self, demand, prev_production):
         for t in range(self.horizon):
             for p in self.products:
                 self.raw_demand[p][t] = demand[p][t] + (self.dept[p][t-1] if t>0 else 0)

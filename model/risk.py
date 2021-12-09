@@ -3,6 +3,7 @@ import openpyxl
 from . import Shared
 from . import utils
 import math
+import json 
 
 class RiskManager(Shared):
 
@@ -27,22 +28,24 @@ class RiskManager(Shared):
             res["adaptability"][p]  = 1 - l4n[-1]
         return res
 
-    def getDitributions(self, cdemand, creception, cdemand_ref, creception_ref, initial_stock):
+    def getDitributions(self, cdemand_ref, creception_ref, initial_stock):
         rpm = {p: None for p in self.products}
         dpm = {p: None for p in self.products}
         for p in self.products:
             s0 = initial_stock[p]
-            if self.pdp_dependency:
-                rpm[p] = self.getRpm(creception, p, s0)
-            else:
-                rpm[p] = self.getRpm(creception_ref, p, s0)
-            if self.ba_dependency:
-                dpm[p] = self.getDpm(cdemand, p)
-            else:
-                dpm[p] = self.getDpm(cdemand_ref, p)
+            rpm[p] = self.getRpm(creception_ref, p, s0)
+            dpm[p] = self.getDpm(cdemand_ref, p)
         return dpm, rpm
 
-    def loadRModel(self, file_name: str) -> None:
+    def loadRModel(self, file_name):
+        with open(file_name,) as fp:
+            self.r_model = json.load(fp)
+    
+    def loadDModel(self, file_name):
+        with open(file_name,) as fp:
+            self.d_model = json.load(fp)
+        
+    def loadRModelFromExcel(self, file_name: str) -> None:
         wb = openpyxl.load_workbook(file_name)
         sh = wb.active
         params = ["a", "b", "c", "d", "ModelType", "RefWeek"]
@@ -54,7 +57,7 @@ class RiskManager(Shared):
             } for k, p in enumerate(self.products)
         }
     
-    def loadDModel(self, umcd_f: str):
+    def loadDModelFromExcel(self, umcd_f: str):
         self.d_model = {a: {p: {} for p in ap} for a, ap in self.affiliate_products.items()}
         wb = openpyxl.load_workbook(umcd_f)
         sh = wb.active
@@ -62,7 +65,7 @@ class RiskManager(Shared):
         while sh.cell(r, 1).value:
             product = sh.cell(r, 1).value
             aff_code = sh.cell(r, 2).value
-            aff = self.affiliate_code[aff_code]
+            aff = self.getAffByCode(aff_code)
             param = sh.cell(r, 4).value
             if param == "RefWeek":
                 quantity = utils.readRefWeekRow(sh, r, 5, self.real_horizon)
