@@ -31,9 +31,8 @@ class SmoothingFilter(Shared):
             else:
                 x1, x2 = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
                 tgt = round(u * x1 + (1 - u) * x2)
-            if dpm["c"][t] < dpm["a"][t]:
-                raise
-            x[t] = min(tgt, dpm["c"][t])
+            # x[t] = min(tgt, dpm["d"][t])
+            x[t] = tgt
         for t in range(start, self.real_horizon):
             x[t] = max(x[t-1], x[t])
         self.validateOutput(x_in, x)

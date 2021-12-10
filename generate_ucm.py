@@ -37,7 +37,7 @@ def genUCMDR(ucmPv, pv0, r0, d0, du1, du2, ru1, ru2):
     ucmR["ModelType"] = ["I1"] * size
     dr0 = pv0 / d0
     rr0 = pv0 / r0
-    for t in range(2, size):
+    for t in range(size):
         t0 = ucmPv["RefWeek"][t]
         rt = t / (t - t0) if t0 != t else 1
         ax, bx, cx, dx = ucmPv["a"][t], ucmPv["b"][t], ucmPv["c"][t], ucmPv["d"][t]
