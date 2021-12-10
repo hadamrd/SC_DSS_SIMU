@@ -147,7 +147,7 @@ class RiskManager(Shared):
     @staticmethod
     def getL4nAlphaBound(alpha, a, b, c, d):
         x1 = math.floor(b - (b - a) * alpha + 1) if a != b else a
-        x2 = math.ceil(d + (c - d) * alpha - 1) if c != d else c
+        x2 = math.ceil(alpha * d + (1 - alpha) * c  - 1) if c != d else c
         return x1, x2
 
     @staticmethod
