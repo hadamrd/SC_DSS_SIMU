@@ -20,5 +20,5 @@ class Affiliate(Shared):
                 self.demand[p][t] = max(0, sales_forcast[p][t] + self.target_stock[p][t] - imminent_supply - stock_proj)
                 stock_proj = stock_proj + imminent_supply + self.demand[p][t] - sales_forcast[p][t]
                 if stock_proj < 0:
-                    raise Exception("cant have negative stock")
+                    raise Exception("can't have negative stock")
         return self.demand

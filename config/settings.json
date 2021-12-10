@@ -2,7 +2,7 @@
     "horizon": 24,
     "real_horizon": 20,
     "fixed_horizon": 3,
-    "l4n_threshold": 0.2,
+    "l4n_threshold": 0.5,
     "pv_dependency": false,
     "ba_dependency": false,
     "pdp_dependency": false,
@@ -11,7 +11,7 @@
     "affiliate": {
         "france": {
             "code": "001",
-            "pv_range": 1000,
+            "pv_range": 200,
             "target_stock": 0,
             "delivery_time": 0,
             "products": ["P1"]

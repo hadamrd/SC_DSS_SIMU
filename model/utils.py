@@ -104,8 +104,11 @@ def pickRand(a, b, c, d):
     if c == d == 0:
         return x1
     return x1 if random.random() < 0.5 else x2
+
+def genRandCQ(size, q0):
+    return list(accumu(randQ(size, q0)))
     
-def genRandCQ(ucm: dict, cq: list, w):
+def genRandCQFromUCM(ucm: dict, cq: list, w):
     cqpm = getPDist(cq, ucm, w)
     n = len(ucm["a"])
     cres = [0 for _ in range(n)]
@@ -120,7 +123,7 @@ def genRandCQHist(size, ucm, q0):
     hist = [None] * size
     cq_ref = list(accumu(randQ(size_q + size, q0)))
     for w in range(size):
-        hist[w] = genRandCQ(ucm, cq_ref, w)
+        hist[w] = genRandCQFromUCM(ucm, cq_ref, w)
     return hist 
 
 def genRandQHist(size, ucm, q0):

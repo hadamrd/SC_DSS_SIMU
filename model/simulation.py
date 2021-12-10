@@ -80,20 +80,19 @@ class Simulation(Shared):
         
         stock_ini = {a: {p: 0 for p in self.itAffProducts(a)} for a in self.itAffiliates()}
         stock_ini["cdc"] = {p: 0 for p in self.products}
-        cdemand_ini = cdemand_ini = {}
+        cdemand_ini = demand_ini = {}
         
         for a in self.itAffiliates():
             r0 = self.getAffPvRange(a)
             d0 = self.getAffPvRange(a)
             
-            crecep_ini_ = list(utils.accumu(utils.randQ(self.horizon, r0)))
-            crecep_ini = {p: utils.genRandCQ(self.risk_manager.r_model[p], crecep_ini_, 0) for p in self.itAffProducts(a)}       
+            crecep_ini_ = utils.genRandCQ(self.horizon, r0)
+            crecep_ini = {p: utils.genRandCQFromUCM(self.risk_manager.r_model[p], crecep_ini_, 0) for p in self.itAffProducts(a)}       
             recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.itAffProducts(a)}
             
-            cdemand_ini_ = list(utils.accumu(utils.randQ(self.horizon, d0)))
-            cdemand_ini[a] = {p: utils.genRandCQ(self.risk_manager.d_model[a][p], cdemand_ini_, 0) for p in self.itAffProducts(a)}       
-            cdemand_ini[a] = {p: utils.diff(crecep_ini[p]) for p in self.itAffProducts(a)}
-            
+            cdemand_ini_ = utils.genRandCQ(self.horizon, d0)
+            cdemand_ini[a] = {p: utils.genRandCQFromUCM(self.risk_manager.d_model[a][p], cdemand_ini_, 0) for p in self.itAffProducts(a)}  
+                    
         input = {
             "prev_production": recep_ini,
             "prev_supply": self.model.getCDCPrevSupply(self.sales_history[0]),
