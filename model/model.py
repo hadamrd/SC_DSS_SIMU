@@ -16,10 +16,8 @@ class Model(Shared):
         self.cdc = CDC()
 
     def getProductSalesForcast(self):
-        return {p: [
-            sum([self.sales_forcast[a][p][t] for a in self.itProductAff(p)]) for t in range(self.horizon)
-        ] for p in self.products}
-
+        return self.sumOverAffiliate(self.sales_forcast)
+    
     def loadSalesForcast(self, file_p):
         with open(file_p) as fp:
             self.sales_forcast = json.load(fp)
@@ -76,10 +74,11 @@ class Model(Shared):
             json.dump(data, fp)
         return data
 
-    def runWeek(self):
+    def runWeek(self, sales_forcast):
+        self.sales_forcast = sales_forcast
         for a, affiliate in self.affiliates.items():
             affiliate.initial_stock = self.initial_stock[a]
-            affiliate.getDemand(self.sales_forcast[a], self.prev_supply[a])
+            d = affiliate.getDemand(self.sales_forcast[a], self.prev_supply[a])
         self.cdc.initial_stock = self.getCDCInitialStock()
         self.cdc_demand = self.getCDCDemand()
         self.cdc_prev_supply = self.getCDCPrevSupply()
@@ -90,7 +89,7 @@ class Model(Shared):
         self.factory.getProduction(self.factory_prod_demand, self.factory_prev_production)
         self.cdc_reception = self.getCDCReception()
         self.cdc_supply, self.cdc_product_supply, self.cdc_dept = self.cdc.getAffSupply(self.cdc_prev_supply, self.cdc_demand, self.cdc_reception)
-
+ 
     def getSnapShot(self):
         snap = {
             "week": self.week,
@@ -162,7 +161,7 @@ class Model(Shared):
         return {a: {
             p: aff.demand[p][aff.delivery_time:] + [0] * aff.delivery_time for p in aff.products
         } for a, aff in self.affiliates.items()}
-    
+     
     def getCDCInitialStock(self):
         return self.initial_stock["cdc"]
         
@@ -176,9 +175,11 @@ class Model(Shared):
         else:
             return self.prev_production
 
-    def getCDCPrevSupply(self):
+    def getCDCPrevSupply(self, prev_supply=None):
+        if not prev_supply:
+            prev_supply = self.prev_supply
         cdc_prev_supply = {a: 
-            {p: self.prev_supply[a][p][aff.delivery_time:] + [0] * (self.horizon-aff.delivery_time) for p in self.itAffProducts(a)}     
+            {p: prev_supply[a][p][aff.delivery_time:] + [0] * (self.horizon-aff.delivery_time) for p in self.itAffProducts(a)}     
             for a, aff in self.affiliates.items()
         }
         return cdc_prev_supply

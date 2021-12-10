@@ -75,9 +75,10 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
         cqdh2 = getDiffHist(hist2.cproduct_supply, p, n, fh)
         mean1, var1 = getMeanVarDiffHist(cqdh1)
         mean2, var2 = getMeanVarDiffHist(cqdh2)
-        sh.cell(curr_row, col).value = var1 / mean1
-        sh.cell(curr_row, col + 1).value = var2 / mean2
+        sh.cell(curr_row, col).value = var1 
+        sh.cell(curr_row, col + 1).value = var2 
         curr_row += 1
+        
     wb.save(dst_f)
 
 

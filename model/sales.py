@@ -6,6 +6,7 @@ from . import utils
 import os
 import json 
 import time
+import copy
 random.seed(datetime.datetime.now())
 
 class SalesManager(Shared):
@@ -39,7 +40,7 @@ class SalesManager(Shared):
             json.dump(hist, fp)
             
     def generateSalesHistory(self, nbr_weeks):
-        pv_hist = [self.getEmptyAffQ()] * nbr_weeks 
+        pv_hist = [self.getEmptyAffQ() for _ in range(nbr_weeks)] 
         for a, p in self.itParams():
             hist = utils.genRandQHist(nbr_weeks, self.ucm[a][p], self.getAffPvRange(a))
             for w in range(nbr_weeks):

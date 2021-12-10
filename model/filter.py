@@ -21,16 +21,19 @@ class SmoothingFilter(Shared):
         x = x_in.copy()
         start = self.range["start"]
         end = self.range["end"]
-        u = 0
+        u = self.settings["smoothing"]["optimisme"]
         for t in range(start, end):
             c, d = rpm["c"][t], rpm["d"][t] 
             a, b = dpm["a"][t], dpm["b"][t]
             l4n_min = RiskManager.getMinL4n(a, b, c, d)
             if l4n_min >= self.l4n_threshold:
-                x[t] = d
+                tgt = d
             else:
                 x1, x2 = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
-                x[t] = round(u * x1 + (1 - u) * x2)
+                tgt = round(u * x1 + (1 - u) * x2)
+            if dpm["c"][t] < dpm["a"][t]:
+                raise
+            x[t] = min(tgt, dpm["c"][t])
         for t in range(start, self.real_horizon):
             x[t] = max(x[t-1], x[t])
         self.validateOutput(x_in, x)

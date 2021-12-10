@@ -69,39 +69,45 @@ def showModel(model):
 def randQ(size_q, q0):
     return np.random.poisson(q0, size_q)
 
-def genUCM(model_args):
+def genUCM(model_args, model_type="I1"):
     params = ["a", "b", "c", "d"]
     model = {param: [] for param in params}
     model["RefWeek"] = []
+    model["ModelType"] = []
     s = 0
     for part in model_args:
         size = part["size"]
         for param in params:
             model[param] += [part[param]] * size
         model["RefWeek"] += [s] * size
+        model["ModelType"] += [model_type] * size
         s += size
     return model
 
-def getPDist(cq, model: dict):
-    a, b, c, d, rw = model.values()
+def getPDist(cq, model: dict, w):
+    a, b, c, d, rw, mt = model.values()
     size = len(rw)
-    f = [cq[t] - cq[t0 - 1] if t0 > 0 else cq[t] for t, t0 in zip(range(size), rw)]
+    f = [cq[w + t] - cq[w + t0 - 1] if w + t0 > 0 else cq[t+w] for t, t0 in zip(range(size), rw)]
     return {
-        "A": [round(cpv + f * a) for cpv, f, a in zip(cq, f, a)],
-        "B": [round(cpv + f * b) for cpv, f, b in zip(cq, f, b)],
-        "C": [round(cpv + f * c) for cpv, f, c in zip(cq, f, c)],
-        "D": [round(cpv + f * d) for cpv, f, d in zip(cq, f, d)]
+        "A": [round(cpv + f * a) for cpv, f, a in zip(cq[w:w+size], f, a)],
+        "B": [round(cpv + f * b) for cpv, f, b in zip(cq[w:w+size], f, b)],
+        "C": [round(cpv + f * c) for cpv, f, c in zip(cq[w:w+size], f, c)],
+        "D": [round(cpv + f * d) for cpv, f, d in zip(cq[w:w+size], f, d)]
     }
 
 def pickRand(a, b, c, d):
     alpha = random.random()
     x1 = round(a + alpha * (b - a))
     x2 = round(d - alpha * (d - c))
+    if a == b == 0:
+        return x2
+    if c == d == 0:
+        return x1
     return x1 if random.random() < 0.5 else x2
     
-def genRandCQ(ucm: dict, q: list):
-    cqpm = getPDist(q, ucm)
-    n = len(q)
+def genRandCQ(ucm: dict, cq: list, w):
+    cqpm = getPDist(cq, ucm, w)
+    n = len(ucm["a"])
     cres = [0 for _ in range(n)]
     A, B, C, D = cqpm.values()
     for t in range(n):
@@ -114,7 +120,7 @@ def genRandCQHist(size, ucm, q0):
     hist = [None] * size
     cq_ref = list(accumu(randQ(size_q + size, q0)))
     for w in range(size):
-        hist[w] = genRandCQ(ucm, cq_ref[w:w + size_q])
+        hist[w] = genRandCQ(ucm, cq_ref, w)
     return hist 
 
 def genRandQHist(size, ucm, q0):

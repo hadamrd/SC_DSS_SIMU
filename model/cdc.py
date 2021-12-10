@@ -16,14 +16,14 @@ class CDC(Shared):
         self.reception = self.getEmptyProductQ(None)
     
     def getProdDemand(self, prev_production, product_demand):
-        bp = self.getEmptyProductQ(0)
+        self.bp = self.getEmptyProductQ(0)
         for p in self.products:
             proj_stock = self.initial_stock[p]
             for t in range(self.horizon):
-                pip = prev_production[p][t] if t < self.prod_time else 0
-                bp[p][t] = max(0, product_demand[p][t] + self.target_stock[p][t] - proj_stock - pip)
-                proj_stock += bp[p][t] + pip - product_demand[p][t]
-        return bp
+                imminent_production = prev_production[p][t] if t < self.prod_time else 0
+                self.bp[p][t] = max(0, product_demand[p][t] + self.target_stock[p][t] - proj_stock - imminent_production)
+                proj_stock += self.bp[p][t] + imminent_production - product_demand[p][t]
+        return self.bp
 
     def getAffSupply(self, prev_supply, demand, reception):
         for p in self.products:
@@ -39,5 +39,7 @@ class CDC(Shared):
                     self.dept[a][p][t] = self.raw_demand[a][p][t] - self.supply[a][p][t]
                 self.product_supply[p][t] = sum([self.supply[a][p][t] for a in self.itProductAff(p)])
                 self.projected_stock[p][t] = self.capacity[p][t] - self.product_supply[p][t]
+                if self.projected_stock[p][t] < 0:
+                    raise Exception("cant have negative stock")
         return self.supply, self.product_supply, self.dept
                     

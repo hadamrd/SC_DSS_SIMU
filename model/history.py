@@ -3,7 +3,7 @@ import json
 import os
 import re
 from . import utils, Shared
-
+import copy
 
 class History(Shared):
     def __init__(self) -> None:
@@ -36,16 +36,16 @@ class History(Shared):
         self.nbr_weeks = self.end_week - self.start_week + 1
 
     def fillData(self, snapshot: dict):
-        self.ba.append(snapshot["demand"])
-        self.pv.append(snapshot["sales_forcast"])
-        self.pa.append(snapshot["supply"])
-        self.dept.append(snapshot["dept"])
-        self.pdp.append(snapshot["reception"])
-        self.bp.append(snapshot["prod_demand"])
-        self.s0.append(snapshot["initial_stock"])
-        self.product_supply.append(snapshot["product_supply"])
-        self.cproduct_supply.append(snapshot["cproduct_supply"])
-        self.metrics.append(snapshot["metrics"])
+        self.ba.append(copy.deepcopy(snapshot["demand"]))
+        self.pv.append(copy.deepcopy(snapshot["sales_forcast"]))
+        self.pa.append(copy.deepcopy(snapshot["supply"]))
+        self.dept.append(copy.deepcopy(snapshot["dept"]))
+        self.pdp.append(copy.deepcopy(snapshot["reception"]))
+        self.bp.append(copy.deepcopy(snapshot["prod_demand"]))
+        self.s0.append(copy.deepcopy(snapshot["initial_stock"]))
+        self.product_supply.append(copy.deepcopy(snapshot["product_supply"]))
+        self.cproduct_supply.append(copy.deepcopy(snapshot["cproduct_supply"]))
+        self.metrics.append(copy.deepcopy(snapshot["metrics"]))
 
     def load(self, history_folder):
         for file_name in os.listdir(history_folder):
