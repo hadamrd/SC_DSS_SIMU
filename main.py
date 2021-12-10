@@ -4,7 +4,7 @@ from model import SalesManager, Simulation, metrics
 import time
 
 if __name__ == "__main__":
-    sales_folder        = "sales_history"  
+    sales_folder        = "sales_history"
     risk_indicator_f    = f"risk_indicators.xlsx"
     start_week          = 0
     end_week            = 40
