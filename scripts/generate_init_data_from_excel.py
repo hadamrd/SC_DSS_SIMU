@@ -1,7 +1,7 @@
 import openpyxl
 import json 
 
-def gen(src_file, dst_file):
+def gen(src_file, dst_file, sales_init_f):
     prods = ["P1", "P2", "P3", "P4"]
     aff = {
         "france": ["P1", "P2", "P3", "P4"],
@@ -39,10 +39,13 @@ def gen(src_file, dst_file):
         for t in range(h):
             pdp[p][t] = int(sh.cell(offset, 4+t).value)
         offset+=2
+        
     with open(dst_file) as fp:
         data = json.load(fp)
 
-    data["sales_forcast"] = pv
+    with open(sales_init_f, 'w') as fp:
+        json.dump(pv, fp) 
+        
     data["prev_supply"] = pa
     data["prev_production"] = pdp
 
@@ -52,4 +55,6 @@ def gen(src_file, dst_file):
 
 
 if __name__=="__main__":
-    gen("scripts/s2.xlsm", "config/input_S2.json")
+    sales_init_f = "config/sales_S2.json"
+    model_init_f = "config/input_S2.json"
+    gen("scripts/s2.xlsm", model_init_f, sales_init_f)
