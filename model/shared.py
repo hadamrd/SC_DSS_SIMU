@@ -2,6 +2,8 @@ import json
 from typing import Any, Tuple
 import enum
 import math
+import openpyxl
+from . import utils 
 class PvRandStrat(enum.Enum):
     minmax = "minmax"
     uniform = "uniform"
@@ -100,3 +102,33 @@ class Shared:
         if not size:
             size = self.horizon
         return {p: [value] * size for p in self.products}
+    
+    def loadAffModelFromExcel(self, umcd_f: str, size):
+        d_model = {a: {p: {} for p in self.itAffProducts(a)} for a in self.itAffiliates()}
+        wb = openpyxl.load_workbook(umcd_f)
+        sh = wb.active
+        r = 2
+        while sh.cell(r, 1).value:
+            product = sh.cell(r, 1).value
+            aff_code = sh.cell(r, 2).value
+            aff = self.getAffByCode(aff_code)
+            param = sh.cell(r, 4).value
+            if param == "RefWeek":
+                quantity = utils.readRefWeekRow(sh, r, 5, size)
+            else:
+                quantity = utils.readSubRow(sh, r, 5, size)
+            d_model[aff][product][param] = quantity
+            r += 1
+        return d_model
+
+    def loadProductModelFromExcel(self, file_name: str) -> None:
+        wb = openpyxl.load_workbook(file_name)
+        sh = wb.active
+        params = ["a", "b", "c", "d", "ModelType", "RefWeek"]
+        self.r_model = {
+            p: {
+                param: utils.readSubRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) if param != "RefWeek" else 
+                utils.readRefWeekRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) 
+                for j, param in enumerate(params)
+            } for k, p in enumerate(self.products)
+        }

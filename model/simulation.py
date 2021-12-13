@@ -85,23 +85,21 @@ class Simulation(Shared):
         cdemand_ini = {}
         
         for a in self.itAffiliates():
-            r0 = self.getAffPvRange(a)
-            d0 = self.getAffPvRange(a)
-            
-            crecep_ini_ = utils.genRandCQ(self.horizon, r0)
-            crecep_ini = {p: utils.genRandCQFromUCM(self.risk_manager.r_model[p], crecep_ini_, 0) for p in self.itAffProducts(a)}       
-            recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.itAffProducts(a)}
-            
+            d0 = self.getAffPvRange(a)        
             cdemand_ini_ = utils.genRandCQ(self.horizon, d0)
-            cdemand_ini[a] = {p: utils.genRandCQFromUCM(self.risk_manager.d_model[a][p], cdemand_ini_, 0) for p in self.itAffProducts(a)}  
-                    
+            cdemand_ini[a] = {p: utils.genRandCQFromUCM(self.risk_manager.d_model[a][p], cdemand_ini_, 0) + (self.horizon-self.real_horizon)*[0] for p in self.itAffProducts(a)}  
+        r0 = sum([self.getAffPvRange(a) for a in self.itAffiliates()])
+        crecep_ini_ = utils.genRandCQ(self.horizon, r0)
+        crecep_ini = {p: utils.genRandCQFromUCM(self.risk_manager.r_model[p], crecep_ini_, 0) + (self.horizon-self.real_horizon)*[0] for p in self.products}
+        recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.products}
+                
         input = {
             "prev_production": recep_ini,
             "prev_supply": self.model.getCDCPrevSupply(self.sales_history[0]),
             "initial_stock": stock_ini,
             "week": 0,
         }
-        
+
         ppv = self.sumOverAffiliate(self.sales_history[0])
         for p in self.products:
             for a in self.itProductAff(p):
@@ -128,9 +126,9 @@ class Simulation(Shared):
             prev_supply = self.model.prev_supply
             prev_psupply = self.sumOverAffiliate(prev_supply)
             
-            # accumulate plans
             cpr = cproduct_supply[p][0]
-            prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], prev_cpsupplly[p][0])) for p in self.products}
+
+            prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], cpr)) for p in self.products}
             cproduct_supply = {p: list(utils.accumu(product_supply[p], cpr)) for p in self.products}
             cpdemand = {p: list(utils.accumu(pdemand[p], cpdemand[p][0])) for p in self.products}
             creception = {p: list(utils.accumu(reception[p], creception[p][0])) for p in self.products}
@@ -158,10 +156,9 @@ class Simulation(Shared):
             if smoothing_filter:
                 cproduct_supply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) for p in self.products}
                 product_supply_out = {p: utils.diff(cproduct_supply_out[p], cpr) + product_supply[p][n:] for p in self.products}
+                    
                 cproduct_supply_out = {p: cproduct_supply_out[p] + list(utils.accumu(product_supply[p][n:], cproduct_supply_out[p][n-1])) for p in self.products}
                 supply_out = self.dispatch(product_supply_out, demand, supply)
-                print(supply_out)
-                print(product_supply_out)
                 self.model.setCDCSupply(supply_out, product_supply_out)
                 snapshot["cproduct_supply"] = cproduct_supply_out
                 snapshot["product_supply"] = product_supply_out

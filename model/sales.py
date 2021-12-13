@@ -14,22 +14,15 @@ class SalesManager(Shared):
     def __init__(self) -> None:
         super().__init__()
         self.ucm: dict = {}
-        self.loadModel(self.sales_UCMF)
-    
+        if self.sales_UCMF.endswith(".json"):
+            self.loadModel(self.sales_UCMF)
+        elif self.sales_UCMF.endswith(".xlsx"):
+            self.ucm = self.loadAffModelFromExcel(self.sales_UCMF, size=self.horizon)
+            
     def loadModel(self, file_name):
         with open(file_name) as fp:
             self.ucm = json.load(fp)
             
-    def loadModelFromExcel(self, umcpv_f):
-        wb = openpyxl.load_workbook(umcpv_f)
-        self.ucm = {}
-        for a in self.itAffiliates():
-            aff_code = self.getAffCode(a)
-            sh = wb[aff_code]
-            self.ucm[a] = {}
-            for k, param in enumerate(["a", "b", "c", "d", "ref_week"]):
-                self.ucm[a][param] = [sh.cell(row=2+k, column=t+2).value for t in range(self.horizon)]
-    
     def saveSalesHistory(self, hist, dst_folder):
         nbr_weeks = len(hist)
         if not os.path.exists(dst_folder):

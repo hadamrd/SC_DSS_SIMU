@@ -14,7 +14,28 @@
             "pv_range": 500,
             "target_stock": 0,
             "delivery_time": 0,
-            "products": ["P1"]
+            "products": ["P1", "P2", "P3", "P4"]
+        },
+        "spain": {
+            "code": "002",
+            "pv_range": 200,
+            "target_stock": 0,
+            "delivery_time": 0,
+            "products": ["P1", "P2"]
+        },
+        "chili": {
+            "code": "003",
+            "pv_range": 200,
+            "target_stock": 0,
+            "delivery_time": 0,
+            "products": ["P1", "P3"]
+        },
+        "australia": {
+            "code": "004",
+            "pv_range": 200,
+            "target_stock": 0,
+            "delivery_time": 0,
+            "products": ["P1", "P2"]
         }
     },
     "cdc": {
@@ -26,13 +47,13 @@
             "start": 2,
             "end": 19
         },
-        "optimisme": 0
+        "optimisme": 1
     },
     "history_template": "templates/template_simu_result.xlsx",
     "metrics_template": "templates/template_metrics.xlsx",
-    "demand_UCMF"   :   "uncertainty_models/UMCDF_I1.json",
-    "reception_UCMF": "uncertainty_models/UMCRF_I1.json",
-    "sales_UCMF"    : "uncertainty_models/UMCPVF_I1.json",
+    "demand_UCMF"   :   "uncertainty_models/UMCDF_I2.xlsx",
+    "reception_UCMF": "uncertainty_models/UMCRF_I1.xlsx",
+    "sales_UCMF"    : "uncertainty_models/UMCPVF_I2.xlsx",
     "indicators_template_f": "templates/template_risk_indicators.xlsx",
     "platform_template_f": "templates/template_platform_input.xlsx",
     "prod_time": 2

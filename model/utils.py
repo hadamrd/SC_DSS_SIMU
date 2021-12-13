@@ -85,8 +85,8 @@ def genUCM(model_args, model_type="I1"):
     return model
 
 def getPDist(cq, model: dict, w):
-    a, b, c, d, rw, mt = model.values()
-    size = len(rw)
+    a, b, c, d, mt, rw = model.values()
+    size = len(a)
     f = [cq[w + t] - cq[w + t0 - 1] if w + t0 > 0 else cq[t+w] for t, t0 in zip(range(size), rw)]
     return {
         "A": [round(cpv + f * a) for cpv, f, a in zip(cq[w:w+size], f, a)],

@@ -9,8 +9,14 @@ class RiskManager(Shared):
 
     def __init__(self) -> None:
         super().__init__()
-        self.loadDModel(self.demand_UCMF)
-        self.loadRModel(self.reception_UCMF)
+        if self.demand_UCMF.endswith(".json"):
+            self.loadDModel(self.demand_UCMF)
+        elif self.demand_UCMF.endswith(".xlsx"):
+            self.d_model = self.loadAffModelFromExcel(self.demand_UCMF, size=self.real_horizon)
+        if self.demand_UCMF.endswith(".json"):
+            self.loadRModel(self.reception_UCMF)
+        elif self.demand_UCMF.endswith(".xlsx"):
+            self.loadProductModelFromExcel(self.demand_UCMF)
 
     def getRiskMetrics(self, dpm, rpm, xc) -> dict[str, list[float]]:
         res = {
@@ -44,35 +50,6 @@ class RiskManager(Shared):
     def loadDModel(self, file_name):
         with open(file_name,) as fp:
             self.d_model = json.load(fp)
-        
-    def loadRModelFromExcel(self, file_name: str) -> None:
-        wb = openpyxl.load_workbook(file_name)
-        sh = wb.active
-        params = ["a", "b", "c", "d", "ModelType", "RefWeek"]
-        self.r_model = {
-            p: {
-                param: utils.readSubRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) if param != "RefWeek" else 
-                utils.readRefWeekRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) 
-                for j, param in enumerate(params)
-            } for k, p in enumerate(self.products)
-        }
-    
-    def loadDModelFromExcel(self, umcd_f: str):
-        self.d_model = {a: {p: {} for p in ap} for a, ap in self.affiliate_products.items()}
-        wb = openpyxl.load_workbook(umcd_f)
-        sh = wb.active
-        r = 2
-        while sh.cell(r, 1).value:
-            product = sh.cell(r, 1).value
-            aff_code = sh.cell(r, 2).value
-            aff = self.getAffByCode(aff_code)
-            param = sh.cell(r, 4).value
-            if param == "RefWeek":
-                quantity = utils.readRefWeekRow(sh, r, 5, self.real_horizon)
-            else:
-                quantity = utils.readSubRow(sh, r, 5, self.real_horizon)
-            self.d_model[aff][product][param] = quantity
-            r += 1
 
     def getFuzzyDist(self, cq, model, n, s0=0, k=0):
         params = ["a", "b", "c", "d"]
