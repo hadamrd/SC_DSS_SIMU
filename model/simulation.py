@@ -106,6 +106,8 @@ class Simulation(Shared):
                 cdemand_ref[a][p][:self.horizon] = cdemand_ini[a][p]
             creception_ref[p][:self.horizon] = crecep_ini[p]
         
+        cpr = {p: 0 for p in self.products}
+        
         # start main loop
         for w in range(start_week, end_week + 1):
             k = w - start_week
@@ -126,10 +128,9 @@ class Simulation(Shared):
             prev_supply = self.model.prev_supply
             prev_psupply = self.sumOverAffiliate(prev_supply)
             
-            cpr = cproduct_supply[p][0]
-
-            prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], cpr)) for p in self.products}
-            cproduct_supply = {p: list(utils.accumu(product_supply[p], cpr)) for p in self.products}
+            prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], cproduct_supply[p][0])) for p in self.products}
+            cproduct_supply = {p: list(utils.accumu(product_supply[p], cproduct_supply[p][0])) for p in self.products}
+            
             cpdemand = {p: list(utils.accumu(pdemand[p], cpdemand[p][0])) for p in self.products}
             creception = {p: list(utils.accumu(reception[p], creception[p][0])) for p in self.products}
             cppv = {p: list(utils.accumu(ppv[p], cppv[p][0])) for p in self.products}
@@ -155,7 +156,7 @@ class Simulation(Shared):
             # In case there is a filter apply it
             if smoothing_filter:
                 cproduct_supply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) for p in self.products}
-                product_supply_out = {p: utils.diff(cproduct_supply_out[p], cpr) + product_supply[p][n:] for p in self.products}
+                product_supply_out = {p: utils.diff(cproduct_supply_out[p], cproduct_supply[p][0]) + product_supply[p][n:] for p in self.products}
                     
                 cproduct_supply_out = {p: cproduct_supply_out[p] + list(utils.accumu(product_supply[p][n:], cproduct_supply_out[p][n-1])) for p in self.products}
                 supply_out = self.dispatch(product_supply_out, demand, supply)
