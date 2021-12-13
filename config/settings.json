@@ -11,7 +11,7 @@
     "affiliate": {
         "france": {
             "code": "001",
-            "pv_range": 500,
+            "pv_range": 200,
             "target_stock": 0,
             "delivery_time": 0,
             "products": ["P1", "P2", "P3", "P4"]

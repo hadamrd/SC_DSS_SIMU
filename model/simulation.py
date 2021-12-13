@@ -81,16 +81,23 @@ class Simulation(Shared):
         prev_cpsupplly = self.getEmptyProductQ(value=0)
         
         stock_ini = {a: {p: 0 for p in self.itAffProducts(a)} for a in self.itAffiliates()}
-        stock_ini["cdc"] = {p: 10000 for p in self.products}
-        cdemand_ini = {}
-        
+        stock_ini["cdc"] = {p: 100000 for p in self.products}
+
+        cdemand_ini = {a: {} for a in self.itAffiliates()}
         for a in self.itAffiliates():
             d0 = self.getAffPvRange(a)        
-            cdemand_ini_ = utils.genRandCQ(self.horizon, d0)
-            cdemand_ini[a] = {p: utils.genRandCQFromUCM(self.risk_manager.d_model[a][p], cdemand_ini_, 0) + (self.horizon-self.real_horizon)*[0] for p in self.itAffProducts(a)}  
+            for p in self.itAffProducts(a):
+                cdemand_ini_ = utils.genRandCQ(self.horizon, d0)
+                cdemand_ini[a][p] = utils.genRandCQFromUCM(self.risk_manager.d_model[a][p], cdemand_ini_, 0)
+                cdemand_ini[a][p] += (self.horizon-self.real_horizon)*[cdemand_ini[a][p][self.real_horizon-1]]
+                
         r0 = sum([self.getAffPvRange(a) for a in self.itAffiliates()])
-        crecep_ini_ = utils.genRandCQ(self.horizon, r0)
-        crecep_ini = {p: utils.genRandCQFromUCM(self.risk_manager.r_model[p], crecep_ini_, 0) + (self.horizon-self.real_horizon)*[0] for p in self.products}
+        crecep_ini = {}
+        for p in self.products:
+            crecep_ini_ = utils.genRandCQ(self.horizon, r0)
+            crecep_ini[p] = utils.genRandCQFromUCM(self.risk_manager.r_model[p], crecep_ini_, 0)
+            crecep_ini[p] += (self.horizon-self.real_horizon)*[crecep_ini[p][self.real_horizon-1]]
+            utils.validateCQ(crecep_ini[p])
         recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.products}
                 
         input = {
@@ -121,11 +128,12 @@ class Simulation(Shared):
             reception = self.model.cdc_reception
             demand = self.model.cdc_demand
             pdemand = self.model.cdc_product_demand
+            print(pdemand)
             ppv = self.model.getProductSalesForcast()            
             supply = self.model.cdc_supply
             product_supply = self.model.cdc_product_supply
             stock_ini = self.model.cdc.initial_stock
-            prev_supply = self.model.prev_supply
+            prev_supply = self.model.getCDCPrevSupply()
             prev_psupply = self.sumOverAffiliate(prev_supply)
             
             prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], cproduct_supply[p][0])) for p in self.products}
@@ -134,10 +142,12 @@ class Simulation(Shared):
             cpdemand = {p: list(utils.accumu(pdemand[p], cpdemand[p][0])) for p in self.products}
             creception = {p: list(utils.accumu(reception[p], creception[p][0])) for p in self.products}
             cppv = {p: list(utils.accumu(ppv[p], cppv[p][0])) for p in self.products}
+            
             for p in self.products:
                 for a in self.itProductAff(p):
                     cdemand_ref[a][p][k+self.horizon] = cdemand_ref[a][p][k+self.horizon-1] + demand[a][p][self.horizon-1] 
                 creception_ref[p][k+self.horizon] = creception_ref[p][k+self.horizon-1] + reception[p][self.horizon-1]
+            
 
             # calculate distributions
             dpm, rpm = self.risk_manager.getDitributions(cdemand_ref, creception_ref, stock_ini, k)
@@ -152,12 +162,11 @@ class Simulation(Shared):
             # gather metrics
             snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply)
             n = self.real_horizon
-
+            cproduct_supply_out = self.getEmptyProductQ(0)
             # In case there is a filter apply it
             if smoothing_filter:
                 cproduct_supply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) for p in self.products}
                 product_supply_out = {p: utils.diff(cproduct_supply_out[p], cproduct_supply[p][0]) + product_supply[p][n:] for p in self.products}
-                    
                 cproduct_supply_out = {p: cproduct_supply_out[p] + list(utils.accumu(product_supply[p][n:], cproduct_supply_out[p][n-1])) for p in self.products}
                 supply_out = self.dispatch(product_supply_out, demand, supply)
                 self.model.setCDCSupply(supply_out, product_supply_out)
@@ -165,10 +174,11 @@ class Simulation(Shared):
                 snapshot["product_supply"] = product_supply_out
                 snapshot["supply"] = supply_out
                 snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cproduct_supply_out)
-                cpdemande_ref = self.sumOverAffiliate(cdemand_ref, horizon=self.horizon + nweeks)
                 
-                # log simulation state 
-                self.log_state(k, dpm, rpm, cppv, cproduct_supply, cproduct_supply_out, cpdemand, creception, cpdemande_ref, creception_ref, prev_cpsupplly)
+            cpdemande_ref = self.sumOverAffiliate(cdemand_ref, horizon=self.horizon + nweeks)
+                
+            # log simulation state 
+            self.log_state(k, dpm, rpm, cppv, cproduct_supply, cproduct_supply_out, cpdemand, creception, cpdemande_ref, creception_ref, prev_cpsupplly)
 
             # utils.saveToFile(snapshot, snapshot_f)
 
@@ -201,11 +211,11 @@ class Simulation(Shared):
         )
         print("Finished in :", time.perf_counter()-st)
 
-        # print("Exporting history to excel files ... ", end="")
-        # self.sim_history.exportToExcel(
-        #     prefix=Simulation.count,
-        #     results_folder=self.results_folder
-        # )
-        # print("Finished")
+        print("Exporting history to excel files ... ", end="")
+        self.sim_history.exportToExcel(
+            prefix=Simulation.count,
+            results_folder=self.results_folder
+        )
+        print("Finished")
 
         Simulation.count += 1

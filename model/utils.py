@@ -3,6 +3,7 @@ import json
 import math
 import random
 import numpy as np 
+from . import utils 
 
 
 def writeRow(sh, row: int, start_col: int, lis: list):
@@ -85,7 +86,12 @@ def genUCM(model_args, model_type="I1"):
     return model
 
 def getPDist(cq, model: dict, w):
-    a, b, c, d, mt, rw = model.values()
+    a = model["a"]
+    b = model["b"]
+    c = model["c"]
+    d = model["d"]
+    mt = model["ModelType"]
+    rw = model["RefWeek"]
     size = len(a)
     f = [cq[w + t] - cq[w + t0 - 1] if w + t0 > 0 else cq[t+w] for t, t0 in zip(range(size), rw)]
     return {
@@ -116,6 +122,7 @@ def genRandCQFromUCM(ucm: dict, cq: list, w):
     for t in range(n):
         rand_q = pickRand(A[t], B[t], C[t], D[t])
         cres[t] = max(rand_q, cres[t-1] if t>0 else 0)
+    utils.validateCQ(cres)
     return cres
 
 def genRandCQHist(size, ucm, q0):
@@ -130,11 +137,16 @@ def genRandQHist(size, ucm, q0):
     res = [None] * size
     chist = genRandCQHist(size, ucm, q0)
     for w in range(size):
-        res[w] = diff(chist[w]) 
-        res[w][0] -= res[w-1][0] if w > 0 else 0
+        res[w] = diff(chist[w])
+        res[w][0] -= chist[w-1][0] if w > 0 else 0
     return res
     
-
+def validateCQ(cq):
+    n = len(cq)
+    for t in range(1, n):
+        if cq[t] < cq[t-1]:
+            print(cq)
+            raise Exception(f"x_out[{t}] = {cq[t]} < x_out[{t-1}] = {cq[t-1]}!")
 
         
         

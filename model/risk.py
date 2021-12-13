@@ -16,7 +16,7 @@ class RiskManager(Shared):
         if self.demand_UCMF.endswith(".json"):
             self.loadRModel(self.reception_UCMF)
         elif self.demand_UCMF.endswith(".xlsx"):
-            self.loadProductModelFromExcel(self.demand_UCMF)
+            self.r_model = self.loadProductModelFromExcel(self.demand_UCMF, size=self.real_horizon)
 
     def getRiskMetrics(self, dpm, rpm, xc) -> dict[str, list[float]]:
         res = {
@@ -32,6 +32,10 @@ class RiskManager(Shared):
             res["frequency"][p]     = self.getFrequency(l4p)
             res["severity"][p]      = self.getSeverity(l4n)
             res["adaptability"][p]  = 1 - l4n[-1]
+            if res["severity"][p] > 1:
+                print(l4n)
+                print(self.getSeverity(l4n))
+                raise
         return res
 
     def getDitributions(self, cdemand_ref, creception_ref, initial_stock, k=0):
@@ -60,6 +64,11 @@ class RiskManager(Shared):
             for param in params:
                 alpha_t = model[param][t]
                 F_t = cq[t+k] - cq[k+t0-1] if k+t0-1 > 0 else cq[t+k]
+                if F_t < 0:
+                    print("hhhhhhhhhhhhhhh", t+k, k+t0-1)
+                    print(cq)
+                    print(cq[t+k], cq[k+t0-1])
+                    raise Exception("F_t can't be negative")
                 if model_type == "I1":
                     F_t /= t - t0 + 1
                 dist[param][t] = round(cq[t+k] + alpha_t * F_t + s0)
@@ -71,9 +80,13 @@ class RiskManager(Shared):
             if tr < n - 1:
                 dist["c"][tr] = min(dist["c"][tr], dist["c"][tr+1])
                 dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
-            dist["b"][t] = max(dist["a"][t], dist["b"][t]) 
-            dist["c"][t] = max(dist["b"][t], dist["c"][t])  
-            dist["d"][t] = max(dist["c"][t], dist["d"][t])
+        for t in range(n):
+            for i in range(3):
+                if dist[params[i]][t] > dist[params[i+1]][t]:
+                    print("s\n")
+                    utils.showModel(dist)
+                    utils.showModel(model)
+                    raise Exception(f"When calculating distribution '{params[i+1]}' can't be smaller than '{params[i]}'!") 
         return dist
 
     def getDpm(self, cd, p, k=0) -> dict[str, dict[str, list[int]]]:
@@ -92,6 +105,9 @@ class RiskManager(Shared):
             dist["b"][t] = max(dist["a"][t], dist["b"][t]) 
             dist["c"][t] = max(dist["b"][t], dist["c"][t])  
             dist["d"][t] = max(dist["c"][t], dist["d"][t])
+        for t in range(n):
+            if dist["d"][t] < dist["c"][t]:
+                raise Exception("d cant be smaller than c")
         return dist
 
     def getRpm(self, cr, p, s0, k=0) ->  dict[str, list[int]]:
@@ -101,11 +117,13 @@ class RiskManager(Shared):
     
     @staticmethod
     def l4n(a: int, b: int, c: int, d: int, x: int) -> float:
-        if a > d:
+        if d < c:
+            raise Exception("d cant be smaller than c")
+        if a >= d:
             return 1
         if x == c or x == b:
             return 0
-        if c >= b:
+        if c >= b: 
             return utils.affineY(c, d, x) + 1 - utils.affineY(a, b, x)
         if c < b:
             x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
@@ -151,14 +169,19 @@ class RiskManager(Shared):
 
     @staticmethod
     def getL4Necessity(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list) -> list[float]:
-        l4_necessity = [RiskManager.l4n(a, b, c, d, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
+        try:
+            l4_necessity = [RiskManager.l4n(a, b, c, d, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
+        except:
+            print("\n")
+            utils.showModel(rpm)
+            raise
         return l4_necessity
     
     def getRobustness(self, l4p: list[float]) -> float:
-        return min([1 - v for v in l4p[self.fixed_horizon-1:]])
+        return min([1 - v for v in l4p[self.fixed_horizon:]])
 
     def getFrequency(self, l4p: list[float]) -> int:
-        return sum([v > 0 for v in l4p[self.fixed_horizon-1:]]) / len(l4p[self.fixed_horizon-1:])
+        return sum([v > 0 for v in l4p[self.fixed_horizon:]]) / len(l4p[self.fixed_horizon:])
 
     def getSeverity(self, l4n: list[float]) -> int:
-        return max(l4n[self.fixed_horizon-1:])
+        return max(l4n[self.fixed_horizon:])

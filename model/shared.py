@@ -73,8 +73,10 @@ class Shared:
         if raw_demand[a][p][t] < 0:
             return 0
         tot_raw_demand = sum([raw_demand[a][p][t] for a in self.itProductAff(p) if raw_demand[a][p][t] > 0])
+        if capacity[p][t] < 0:
+            return 0
         if capacity[p][t] < tot_raw_demand:
-            return max (math.floor(capacity[p][t] * raw_demand[a][p][t] / tot_raw_demand),0)
+            return math.floor(capacity[p][t] * raw_demand[a][p][t] / tot_raw_demand)
         else:
             return raw_demand[a][p][t]
 
@@ -88,7 +90,7 @@ class Shared:
                     else:
                         tot_demand = sum([demand[a][p][t] for a in self.itProductAff(p)])
                         if tot_demand == 0:
-                            supply[a][p][t] = capacity[p][t] / len(demand.keys())
+                            supply[a][p][t] = round(capacity[p][t] / len(demand.keys()))
                         else:
                             supply[a][p][t] = math.floor(capacity[p][t] * demand[a][p][t] / tot_demand)
         return supply
@@ -121,14 +123,23 @@ class Shared:
             r += 1
         return d_model
 
-    def loadProductModelFromExcel(self, file_name: str) -> None:
+    def loadProductModelFromExcel(self, file_name: str, size) -> None:
         wb = openpyxl.load_workbook(file_name)
         sh = wb.active
         params = ["a", "b", "c", "d", "ModelType", "RefWeek"]
-        self.r_model = {
-            p: {
-                param: utils.readSubRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) if param != "RefWeek" else 
-                utils.readRefWeekRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) 
-                for j, param in enumerate(params)
-            } for k, p in enumerate(self.products)
+        r_model = {
+            p: { 
+                param: None for param in params
+            } for p in self.products
         }
+        r = 2
+        while sh.cell(r, 1).value:
+            product = sh.cell(r, 1).value
+            param = sh.cell(r, 4).value
+            if param == "RefWeek":
+                quantity = utils.readRefWeekRow(sh, r, 5, size)
+            else:
+                quantity = utils.readSubRow(sh, r, 5, size)
+            r_model[product][param] = quantity
+            r += 1
+        return r_model
