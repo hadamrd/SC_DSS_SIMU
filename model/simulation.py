@@ -81,7 +81,7 @@ class Simulation(Shared):
         prev_cpsupplly = self.getEmptyProductQ(value=0)
         
         stock_ini = {a: {p: 0 for p in self.itAffProducts(a)} for a in self.itAffiliates()}
-        stock_ini["cdc"] = {p: 4000 for p in self.products}
+        stock_ini["cdc"] = {p: 10000 for p in self.products}
         cdemand_ini = {}
         
         for a in self.itAffiliates():

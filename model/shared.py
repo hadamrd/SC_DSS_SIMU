@@ -72,7 +72,7 @@ class Shared:
             return 0
         tot_raw_demand = sum([raw_demand[a][p][t] for a in self.itProductAff(p) if raw_demand[a][p][t] > 0])
         if capacity[p][t] < tot_raw_demand:
-            return math.floor(capacity[p][t] * raw_demand[a][p][t] / tot_raw_demand)
+            return max (math.floor(capacity[p][t] * raw_demand[a][p][t] / tot_raw_demand),0)
         else:
             return raw_demand[a][p][t]
 
