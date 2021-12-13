@@ -29,7 +29,7 @@ class Simulation(Shared):
             if os.path.exists(log_f):
                 open(log_f.format(p), 'w').close()
     
-    def log_state(self, k, dpm, rpm, cppv, cproduct_supply, cproduct_supply_out, cpdemand, creception, cpdemande_ref, creception_ref):      
+    def log_state(self, k, dpm, rpm, cppv, cproduct_supply, cproduct_supply_out, cpdemand, creception, cpdemande_ref, creception_ref, prev_cpsupplly):      
         n = self.real_horizon          
         nchars = 16 + 7 * n
         format_row = "{:>16}" + "{:>7}" * n
@@ -47,6 +47,7 @@ class Simulation(Shared):
                 print("-" * nchars)
                 print(format_row.format("sales", *cppv[p][:n]))
                 print(format_row.format("demand", *cpdemand[p][:n]))
+                print(format_row.format("prev x", *prev_cpsupplly[p][:n]))
                 # print(format_row.format("demand ref", *cpdemande_ref[p][k:k+n]))
                 print("-" * nchars)
                 # print(format_row.format("capacity", *list(utils.accumu(capacity[p]))[:n]))
@@ -77,10 +78,11 @@ class Simulation(Shared):
         creception_ref = self.getEmptyProductQ(value=0, size=self.horizon + nweeks)
         cdemand_ref = self.getEmptyAffQ(value=0, size=self.horizon + nweeks)
         cproduct_supply = self.getEmptyProductQ(value=0)
+        prev_cpsupplly = self.getEmptyProductQ(value=0)
         
         stock_ini = {a: {p: 0 for p in self.itAffProducts(a)} for a in self.itAffiliates()}
-        stock_ini["cdc"] = {p: 0 for p in self.products}
-        cdemand_ini = demand_ini = {}
+        stock_ini["cdc"] = {p: 4000 for p in self.products}
+        cdemand_ini = {}
         
         for a in self.itAffiliates():
             r0 = self.getAffPvRange(a)
@@ -123,9 +125,13 @@ class Simulation(Shared):
             supply = self.model.cdc_supply
             product_supply = self.model.cdc_product_supply
             stock_ini = self.model.cdc.initial_stock
+            prev_supply = self.model.prev_supply
+            prev_psupply = self.sumOverAffiliate(prev_supply)
             
             # accumulate plans
-            cproduct_supply = {p: list(utils.accumu(product_supply[p], cproduct_supply[p][0])) for p in self.products}
+            cpr = cproduct_supply[p][0]
+            prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], prev_cpsupplly[p][0])) for p in self.products}
+            cproduct_supply = {p: list(utils.accumu(product_supply[p], cpr)) for p in self.products}
             cpdemand = {p: list(utils.accumu(pdemand[p], cpdemand[p][0])) for p in self.products}
             creception = {p: list(utils.accumu(reception[p], creception[p][0])) for p in self.products}
             cppv = {p: list(utils.accumu(ppv[p], cppv[p][0])) for p in self.products}
@@ -151,9 +157,11 @@ class Simulation(Shared):
             # In case there is a filter apply it
             if smoothing_filter:
                 cproduct_supply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cproduct_supply[p][:n]) for p in self.products}
-                product_supply_out = {p: utils.diff(cproduct_supply_out[p]) + product_supply[p][n:] for p in self.products}
+                product_supply_out = {p: utils.diff(cproduct_supply_out[p], cpr) + product_supply[p][n:] for p in self.products}
                 cproduct_supply_out = {p: cproduct_supply_out[p] + list(utils.accumu(product_supply[p][n:], cproduct_supply_out[p][n-1])) for p in self.products}
                 supply_out = self.dispatch(product_supply_out, demand, supply)
+                print(supply_out)
+                print(product_supply_out)
                 self.model.setCDCSupply(supply_out, product_supply_out)
                 snapshot["cproduct_supply"] = cproduct_supply_out
                 snapshot["product_supply"] = product_supply_out
@@ -162,7 +170,7 @@ class Simulation(Shared):
                 cpdemande_ref = self.sumOverAffiliate(cdemand_ref, horizon=self.horizon + nweeks)
                 
                 # log simulation state 
-                self.log_state(k, dpm, rpm, cppv, cproduct_supply, cproduct_supply_out, cpdemand, creception, cpdemande_ref, creception_ref)
+                self.log_state(k, dpm, rpm, cppv, cproduct_supply, cproduct_supply_out, cpdemand, creception, cpdemande_ref, creception_ref, prev_cpsupplly)
 
             # utils.saveToFile(snapshot, snapshot_f)
 

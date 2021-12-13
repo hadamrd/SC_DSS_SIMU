@@ -76,20 +76,19 @@ class Shared:
         else:
             return raw_demand[a][p][t]
 
-    def dispatch(self, capacity, demand, prev_supply) -> dict[str, dict[str, list[int]]]:
-        supply = {a: {p: [None] * self.horizon for p in self.itAffProducts(a)} for a in self.itAffiliates()}
-        raw_demand = {a: {p: [None] * self.horizon for p in self.itAffProducts(a)} for a in self.itAffiliates()}        
-        dept = {a: {p: [None] * self.horizon for p in self.itAffProducts(a)} for a in self.itAffiliates()}
+    def dispatch(self, capacity, demand: dict, prev_supply) -> dict[str, dict[str, list[int]]]:
+        supply = {a: {p: [None] * self.horizon for p in self.itAffProducts(a)} for a in self.itAffiliates()}   
         for p in self.products:
             for t in range(self.horizon):
-                for a in self.itProductAff(p):
-                    raw_demand[a][p][t] = demand[a][p][t] + (dept[a][p][t-1] if t>0 else 0)
                 for  a in self.itProductAff(p):
                     if t < self.fixed_horizon:
-                        supply[a][p][t] = self.dipatchSupply(capacity, prev_supply, a, p, t)
+                        supply[a][p][t] = prev_supply[a][p][t]
                     else:
-                        supply[a][p][t] = self.dipatchSupply(capacity, raw_demand, a, p, t)
-                    dept[a][p][t] = raw_demand[a][p][t] - supply[a][p][t]
+                        tot_demand = sum([demand[a][p][t] for a in self.itProductAff(p)])
+                        if tot_demand == 0:
+                            supply[a][p][t] = capacity[p][t] / len(demand.keys())
+                        else:
+                            supply[a][p][t] = math.floor(capacity[p][t] * demand[a][p][t] / tot_demand)
         return supply
 
     def getEmptyAffQ(self, value=None, size=None):

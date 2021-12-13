@@ -22,9 +22,9 @@ def saveToFile(data: dict, dst_f: str):
 def readSubRow(sheet, row, start_col, length):
     return [sheet.cell(row, start_col + t).value for t in range(length)]
 
-def diff(lis):
+def diff(lis, ref=0):
     n = len(lis)
-    return [lis[0]] + [lis[t] - lis[t-1] for t in range(1, n)]
+    return [lis[0]-ref] + [lis[t] - lis[t-1] for t in range(1, n)]
     
 def linspace(min, max, nbr_ech):
     return [min + (max-min) * (k / nbr_ech) for k in range(nbr_ech+1)]
