@@ -75,11 +75,26 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
         cqdh2 = getDiffHist(hist2.cproduct_supply, p, n, fh)
         mean1, var1 = getMeanVarDiffHist(cqdh1)
         mean2, var2 = getMeanVarDiffHist(cqdh2)
+
+        if mean1 == 0:
+            if var1 == 0:
+                varn1 = 1
+            else:
+                varn1 = 9999999999999999999
+        else:
+            varn1 = var1 / mean1
+        if mean2 == 0:
+            if var2 == 0:
+                varn2 = 1
+            else:
+                varn2 = 9999999999999999999
+        else:
+            varn2 = var2 / mean2
+        sh.cell(curr_row, col).value = abs(varn1)
+        sh.cell(curr_row, col + 1).value = abs(varn2)
         print("\n", p)
-        print("S1 nervousness: ", abs(var1 / mean1))
-        print("S2 nervousness: ", abs(var2 / mean2))
-        sh.cell(curr_row, col).value = abs(var1 / mean1 )
-        sh.cell(curr_row, col + 1).value = abs(var2 / mean2)
+        print("S1 nervousness: ", abs(varn1))
+        print("S2 nervousness: ", abs(varn2))
         curr_row += 1
         
     wb.save(dst_f)

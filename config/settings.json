@@ -14,32 +14,32 @@
             "pv_range": 200,
             "target_stock": 0,
             "delivery_time": 0,
-            "products": ["P1", "P2", "P3", "P4"]
+            "products": ["P1", "P2", "P3"]
         },
         "spain": {
             "code": "002",
             "pv_range": 200,
             "target_stock": 0,
-            "delivery_time": 0,
+            "delivery_time": 1,
             "products": ["P1", "P2"]
         },
         "chili": {
             "code": "003",
             "pv_range": 200,
             "target_stock": 0,
-            "delivery_time": 0,
+            "delivery_time": 2,
             "products": ["P1", "P3"]
         },
         "australia": {
             "code": "004",
             "pv_range": 200,
             "target_stock": 0,
-            "delivery_time": 0,
-            "products": ["P1", "P2"]
+            "delivery_time": 3,
+            "products": ["P4"]
         }
     },
     "cdc": {
-        "target_stock": 4000
+        "target_stock": 10000
     },
     "factory_capacity": [17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 1700, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000],
     "smoothing": {
