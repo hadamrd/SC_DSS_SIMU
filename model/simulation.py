@@ -88,8 +88,8 @@ class Simulation(Shared):
                 print(format_row.format("C reception ref", *rpm[p]["c"][:n]))
                 print(format_row.format("D reception ref", *rpm[p]["d"][:n]))
                 print("=" * nchars)
-                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply[p][:n])[:]]))
-                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])[:]]))
+                print(format_row.format("NL4 in", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply[p][:n])]))
+                print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])]))
         sys.stdout = original_stdout
 
     def generateHistory(self, start_week: int, end_week: int, ini_input, smoothing_filter: SmoothingFilter=None):

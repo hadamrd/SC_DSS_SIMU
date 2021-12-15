@@ -25,17 +25,14 @@ class RiskManager(Shared):
             "severity": {p: None for p in self.products},
             "adaptability": {p: None for p in self.products}
         }
+        n = self.real_horizon
         for p in self.products:
-            l4p = self.getL4Possibility(rpm[p], dpm[p], xc[p])
-            l4n = self.getL4Necessity(rpm[p], dpm[p], xc[p])
-            res["robustness"][p]    = self.getRobustness(l4p)
-            res["frequency"][p]     = self.getFrequency(l4p)
-            res["severity"][p]      = self.getSeverity(l4n)
+            l4p = self.getL4Possibility(rpm[p], dpm[p], xc[p][:n])
+            l4n = self.getL4Necessity(rpm[p], dpm[p], xc[p][:n])
+            res["robustness"][p]    = self.getRobustness(l4p[:n])
+            res["frequency"][p]     = self.getFrequency(l4p[:n])
+            res["severity"][p]      = self.getSeverity(l4n[:n])
             res["adaptability"][p]  = 1 - l4n[-1]
-            if res["severity"][p] > 1:
-                print(l4n)
-                print(self.getSeverity(l4n))
-                raise
         return res
 
     def getDitributions(self, cdemand_ref, creception_ref, initial_stock, k=0):
@@ -178,10 +175,10 @@ class RiskManager(Shared):
         return l4_necessity
     
     def getRobustness(self, l4p: list[float]) -> float:
-        return min([1 - v for v in l4p[self.fixed_horizon:]])
+        return min([1 - v for v in l4p[self.fixed_horizon:self.real_horizon]])
 
     def getFrequency(self, l4p: list[float]) -> int:
-        return sum([v > 0 for v in l4p[self.fixed_horizon:]]) / len(l4p[self.fixed_horizon:])
+        return sum([v > 0 for v in l4p[self.fixed_horizon:self.real_horizon]]) / len(l4p[self.fixed_horizon:self.real_horizon])
 
     def getSeverity(self, l4n: list[float]) -> int:
-        return max(l4n[self.fixed_horizon:])
+        return max(l4n[self.fixed_horizon:self.real_horizon])

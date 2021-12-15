@@ -33,7 +33,10 @@ class SmoothingFilter(Shared):
                 tgt = round(u * x1 + (1 - u) * x2)
             # x[t] = min(tgt, dpm["d"][t])
             x[t] = tgt
-        for t in range(start, self.real_horizon):
+        print(x)
+        for t in range(start, self.real_horizon-1):
             x[t] = max(x[t-1], x[t])
+        for t in range(self.real_horizon-2, start-1, -1):
+            x[t] = min(x[t], x[t+1])
         self.validateOutput(x_in, x)
         return x
