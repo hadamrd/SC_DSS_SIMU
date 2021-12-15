@@ -1,9 +1,10 @@
 import json
 import copy
 import openpyxl
-from . import Shared, Affiliate, CDC, Factory
+from . import Shared, Affiliate, CDC, Factory, utils
 
 class Model(Shared):
+    
     def __init__(self) -> None:
         super().__init__()     
         self.week = None
@@ -74,13 +75,18 @@ class Model(Shared):
             json.dump(data, fp)
         return data
 
-    def runWeek(self, sales_forcast):
-        self.sales_forcast = sales_forcast
+    def getAffiliatesDemand(self, prev_supply, sales_forcast):        
+        aff_d = {}
         for a, affiliate in self.affiliates.items():
             affiliate.initial_stock = self.initial_stock[a]
-            d = affiliate.getDemand(self.sales_forcast[a], self.prev_supply[a])
+            aff_d[a] = affiliate.getDemand(sales_forcast[a], prev_supply[a])
+        return aff_d
+            
+    def runWeek(self, sales_forcast):
+        self.sales_forcast = sales_forcast
+        self.aff_demand = self.getAffiliatesDemand(self.sales_forcast, self.prev_supply)
+        self.cdc_demand = self.getCDCDemand(self.aff_demand)
         self.cdc.initial_stock = self.getCDCInitialStock()
-        self.cdc_demand = self.getCDCDemand()
         self.cdc_prev_supply = self.getCDCPrevSupply()
         self.cdc_product_demand = self.sumOverAffiliate(self.cdc_demand)
         self.cdc_prod_demand = self.cdc.getProdDemand(self.prev_production, self.cdc_product_demand)
@@ -157,9 +163,9 @@ class Model(Shared):
             i += 1
         return demand
     
-    def getCDCDemand(self) -> dict[str, dict[str, list[int]]]:
+    def getCDCDemand(self, aff_demand) -> dict[str, dict[str, list[int]]]:
         return {a: {
-            p: aff.demand[p][aff.delivery_time:] + [0] * aff.delivery_time for p in aff.products
+            p: aff_demand[a][p][aff.delivery_time:] + [0] * aff.delivery_time for p in aff.products
         } for a, aff in self.affiliates.items()}
      
     def getCDCInitialStock(self):
@@ -183,4 +189,24 @@ class Model(Shared):
             for a, aff in self.affiliates.items()
         }
         return cdc_prev_supply
+    
+    def getInitInput(self, ini_sales, r_model):
+        stock_ini = {a: {p: self.settings["affiliate"][a]["initial_stock"][p] for p in self.itAffProducts(a)} for a in self.itAffiliates()}
+        stock_ini["cdc"] = {p: self.settings["cdc"]["initial_stock"][p] for p in self.products}
+        r0 = sum([self.getAffPvRange(a) for a in self.itAffiliates()])
+        crecep_ini = {}
+        for p in self.products:
+            crecep_ini_ = utils.genRandCQ(self.horizon, r0)
+            crecep_ini[p] = utils.genRandCQFromUCM(r_model[p], crecep_ini_, 0)
+            crecep_ini[p] += (self.horizon-self.real_horizon)*[crecep_ini[p][self.real_horizon-1]]
+            utils.validateCQ(crecep_ini[p])
+        recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.products}
+        input = {
+            "prev_production": recep_ini,
+            "crecep_ini": crecep_ini,
+            "prev_supply": self.getCDCPrevSupply(ini_sales),
+            "initial_stock": stock_ini,
+            "week": 0,
+        }
+        return input
     
