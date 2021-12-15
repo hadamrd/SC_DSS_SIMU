@@ -24,9 +24,11 @@ if __name__ == "__main__":
     # Run without smoothing the PA plan
     print("> Working on with smoothing filter case: ")
     simu1 = Simulation("simu1")
+    ini_input = simu1.getInitInput(sales_hist[0], simu1.risk_manager.r_model)
     simu1.run(
         sales_history=sales_hist,
         start_week=start_week, 
+        ini_input=ini_input,
         end_week=end_week, 
         pa_filter=smoothing_filter
     )
@@ -38,6 +40,7 @@ if __name__ == "__main__":
         sales_history=sales_hist,
         start_week=start_week, 
         end_week=end_week, 
+        ini_input=ini_input,
         pa_filter=None
     )
 

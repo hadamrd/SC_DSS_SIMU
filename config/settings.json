@@ -11,12 +11,11 @@
             "pv_range": 200,
             "target_stock": 0,
             "delivery_time": 0,
-            "products": ["P1", "P2", "P3", "P4"],
+            "products": ["P1", "P2", "P3"],
             "initial_stock": {
                 "P1": 0,
                 "P2": 0,
-                "P3": 0,
-                "P4": 0
+                "P3": 0
             }
         },
         "spain": {
@@ -46,10 +45,9 @@
             "pv_range": 200,
             "target_stock": 0,
             "delivery_time": 0,
-            "products": ["P1", "P2"],
+            "products": ["P4"],
             "initial_stock": {
-                "P1": 0,
-                "P2": 0
+                "P4": 0
             }
         }
     },

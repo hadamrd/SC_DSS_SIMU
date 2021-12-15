@@ -34,12 +34,14 @@ class CDC(Shared):
                     self.raw_demand[a][p][t] = demand[a][p][t] + (self.dept[a][p][t-1] if t>0 else 0)
                 for a in self.itProductAff(p):
                     if t < self.fixed_horizon:
-                        self.supply[a][p][t] = prev_supply[a][p][t]
+                        self.supply[a][p][t] = self.dipatchSupply(self.capacity, prev_supply, a, p, t)
+                        # self.supply[a][p][t] = prev_supply[a][p][t]
                     else:
                         self.supply[a][p][t] = self.dipatchSupply(self.capacity, self.raw_demand, a, p, t)
                     self.dept[a][p][t] = self.raw_demand[a][p][t] - self.supply[a][p][t]
                 self.product_supply[p][t] = sum([self.supply[a][p][t] for a in self.itProductAff(p)])
                 self.projected_stock[p][t] = self.capacity[p][t] - self.product_supply[p][t]
-                # if self.projected_stock[p][t] < 0:
-                #     raise Exception("Negative stock impossible")
+                
+                if self.projected_stock[p][t] < 0:
+                    raise Exception("Negative stock impossible")
         return self.supply, self.product_supply, self.dept

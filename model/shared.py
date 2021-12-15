@@ -86,7 +86,8 @@ class Shared:
             for t in range(self.horizon):
                 for  a in self.itProductAff(p):
                     if t < self.fixed_horizon:
-                        supply[a][p][t] = prev_supply[a][p][t]
+                        supply[a][p][t] = self.dipatchSupply(capacity, prev_supply, a, p, t)
+                        # supply[a][p][t] = prev_supply[a][p][t]
                     else:
                         tot_demand = sum([demand[a][p][t] for a in self.itProductAff(p)])
                         if tot_demand == 0:

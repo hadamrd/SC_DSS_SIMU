@@ -190,23 +190,3 @@ class Model(Shared):
         }
         return cdc_prev_supply
     
-    def getInitInput(self, ini_sales, r_model):
-        stock_ini = {a: {p: self.settings["affiliate"][a]["initial_stock"][p] for p in self.itAffProducts(a)} for a in self.itAffiliates()}
-        stock_ini["cdc"] = {p: self.settings["cdc"]["initial_stock"][p] for p in self.products}
-        r0 = sum([self.getAffPvRange(a) for a in self.itAffiliates()])
-        crecep_ini = {}
-        for p in self.products:
-            crecep_ini_ = utils.genRandCQ(self.horizon, r0)
-            crecep_ini[p] = utils.genRandCQFromUCM(r_model[p], crecep_ini_, 0)
-            crecep_ini[p] += (self.horizon-self.real_horizon)*[crecep_ini[p][self.real_horizon-1]]
-            utils.validateCQ(crecep_ini[p])
-        recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.products}
-        input = {
-            "prev_production": recep_ini,
-            "crecep_ini": crecep_ini,
-            "prev_supply": self.getCDCPrevSupply(ini_sales),
-            "initial_stock": stock_ini,
-            "week": 0,
-        }
-        return input
-    
