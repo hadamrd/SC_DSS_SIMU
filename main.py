@@ -1,36 +1,35 @@
 from re import S, template
 from model.filter import SmoothingFilter
-from model import RiskManager, SalesManager, Simulation, metrics
-
+from model import SalesManager, Simulation, metrics
+import time
 
 if __name__ == "__main__":
-    initial_sales_f     = "config/sales_S2.json"
-    initial_input_f     = "config/input_S2.json"
-    sales_folder        = "sales_history"  
-    risk_indicator_f = f"risk_indicators.xlsx"
-    start_week          = 2
-    
-    end_week            = 42
+    sales_folder        = "sales_history"
+    risk_indicator_f    = f"risk_indicators.xlsx"
+    start_week          = 0
+    end_week            = 40
+    nbr_weeks           = end_week - start_week + 1
     smoothing_filter    = SmoothingFilter()
     sales_manager       = SalesManager()
 
+
     print("*** START")
     # Generate all sales history beforhand
-    sales_manager.generateSalesHistory(
-        initial_sales_f,
-        start_week,
-        end_week,
-        sales_folder
-    )
-
+    st = time.perf_counter()
+    print("Generating sales history ... ", end="")
+    sales_hist = sales_manager.generateSalesHistory(nbr_weeks)
+    print("Finished in ", round(time.perf_counter() - st, 2))
+    # sales_manager.saveSalesHistory(sales_hist, sales_folder)
+    
     # Run without smoothing the PA plan
     print("> Working on with smoothing filter case: ")
     simu1 = Simulation("simu1")
+    ini_input = simu1.getInitInput(sales_hist[0], simu1.risk_manager.r_model)
     simu1.run(
-        initial_input_f=initial_input_f, 
+        sales_history=sales_hist,
         start_week=start_week, 
+        ini_input=ini_input,
         end_week=end_week, 
-        sales_folder=sales_folder,
         pa_filter=smoothing_filter
     )
     print("*** Finished")
@@ -38,15 +37,14 @@ if __name__ == "__main__":
     print("> Working on without smoothing filter case: ")
     simu2 = Simulation("simu2")
     simu2.run(
-        initial_input_f=initial_input_f, 
+        sales_history=sales_hist,
         start_week=start_week, 
         end_week=end_week, 
-        sales_folder=sales_folder,
+        ini_input=ini_input,
         pa_filter=None
     )
 
     print("Generating indicators excel ... ", end="")
-    nbr_weeks = end_week - start_week + 1
     metrics.exportToExcel(simu1.sim_history, simu2.sim_history, risk_indicator_f)
     print("*** Finished")
 

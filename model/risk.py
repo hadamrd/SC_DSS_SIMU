@@ -3,13 +3,20 @@ import openpyxl
 from . import Shared
 from . import utils
 import math
+import json 
 
 class RiskManager(Shared):
 
     def __init__(self) -> None:
         super().__init__()
-        self.loadDModel(self.demand_UCMF)
-        self.loadRModel(self.reception_UCMF)
+        if self.demand_UCMF.endswith(".json"):
+            self.loadDModel(self.demand_UCMF)
+        elif self.demand_UCMF.endswith(".xlsx"):
+            self.d_model = self.loadAffModelFromExcel(self.demand_UCMF, size=self.real_horizon)
+        if self.demand_UCMF.endswith(".json"):
+            self.loadRModel(self.reception_UCMF)
+        elif self.demand_UCMF.endswith(".xlsx"):
+            self.r_model = self.loadProductModelFromExcel(self.demand_UCMF, size=self.real_horizon)
 
     def getRiskMetrics(self, dpm, rpm, xc) -> dict[str, list[float]]:
         res = {
@@ -18,72 +25,50 @@ class RiskManager(Shared):
             "severity": {p: None for p in self.products},
             "adaptability": {p: None for p in self.products}
         }
+        n = self.real_horizon
         for p in self.products:
-            l4p = self.getL4Possibility(rpm[p], dpm[p], xc[p])
-            l4n = self.getL4Necessity(rpm[p], dpm[p], xc[p])
-            res["robustness"][p]    = self.getRobustness(l4p)
-            res["frequency"][p]     = self.getFrequency(l4p)
-            res["severity"][p]      = self.getSeverity(l4n)
+            l4p = self.getL4Possibility(rpm[p], dpm[p], xc[p][:n])
+            l4n = self.getL4Necessity(rpm[p], dpm[p], xc[p][:n])
+            res["robustness"][p]    = self.getRobustness(l4p[:n])
+            res["frequency"][p]     = self.getFrequency(l4p[:n])
+            res["severity"][p]      = self.getSeverity(l4n[:n])
             res["adaptability"][p]  = 1 - l4n[-1]
         return res
 
-    def getDitributions(self, demand, reception, demand_ref, reception_ref, initial_stock):
+    def getDitributions(self, cdemand_ref, creception_ref, initial_stock, k=0):
         rpm = {p: None for p in self.products}
         dpm = {p: None for p in self.products}
         for p in self.products:
             s0 = initial_stock[p]
-            if self.pdp_dependency:
-                rpm[p] = self.getRpm(reception, p, s0)
-            else:
-                rpm[p] = self.getRpm(reception_ref, p, s0)
-            if self.ba_dependency:
-                dpm[p] = self.getDpm(demand, p)
-            else:
-                dpm[p] = self.getDpm(demand_ref, p)
+            rpm[p] = self.getRpm(creception_ref, p, s0, k)
+            dpm[p] = self.getDpm(cdemand_ref, p, k)
         return dpm, rpm
 
-    def loadRModel(self, file_name: str) -> None:
-        wb = openpyxl.load_workbook(file_name)
-        sh = wb.active
-        params = ["a", "b", "c", "d", "ModelType", "RefWeek"]
-        self.r_model = {
-            p: {
-                param: utils.readSubRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) if param != "RefWeek" else 
-                utils.readRefWeekRow(sh, 2 + j + len(params) * k, 5, self.real_horizon) 
-                for j, param in enumerate(params)
-            } for k, p in enumerate(self.products)
-        }
+    def loadRModel(self, file_name):
+        with open(file_name,) as fp:
+            self.r_model = json.load(fp)
     
-    def loadDModel(self, umcd_f: str):
-        self.d_model = {a: {p: {} for p in ap} for a, ap in self.affiliate_products.items()}
-        wb = openpyxl.load_workbook(umcd_f)
-        sh = wb.active
-        r = 2
-        while sh.cell(r, 1).value:
-            product = sh.cell(r, 1).value
-            aff_code = sh.cell(r, 2).value
-            aff = self.affiliate_code[aff_code]
-            param = sh.cell(r, 4).value
-            if param == "RefWeek":
-                quantity = utils.readRefWeekRow(sh, r, 5, self.real_horizon)
-            else:
-                quantity = utils.readSubRow(sh, r, 5, self.real_horizon)
-            self.d_model[aff][product][param] = quantity
-            r += 1
+    def loadDModel(self, file_name):
+        with open(file_name,) as fp:
+            self.d_model = json.load(fp)
 
-    def getFuzzyDist(self, q, model, n, s0=0):
+    def getFuzzyDist(self, cq, model, n, s0=0, k=0):
         params = ["a", "b", "c", "d"]
-        Q = list(utils.accumu(q[:n]))
         dist = {param: [None] * n for param in params}
         for t in range(n):
             t0 = model["RefWeek"][t] - 1
             model_type = model["ModelType"][t] 
             for param in params:
                 alpha_t = model[param][t]
-                F_t = Q[t] - Q[t0-1] if t0-1 > 0 else Q[t]
+                F_t = cq[t+k] - cq[k+t0-1] if k+t0-1 > 0 else cq[t+k]
+                if F_t < 0:
+                    print("hhhhhhhhhhhhhhh", t+k, k+t0-1)
+                    print(cq)
+                    print(cq[t+k], cq[k+t0-1])
+                    raise Exception("F_t can't be negative")
                 if model_type == "I1":
                     F_t /= t - t0 + 1
-                dist[param][t] = round(Q[t] + alpha_t * F_t + s0)
+                dist[param][t] = round(cq[t+k] + alpha_t * F_t + s0)
         for t in range(n):
             if t > 0:
                 dist["a"][t] = max(dist["a"][t-1], dist["a"][t]) 
@@ -92,26 +77,50 @@ class RiskManager(Shared):
             if tr < n - 1:
                 dist["c"][tr] = min(dist["c"][tr], dist["c"][tr+1])
                 dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
+        for t in range(n):
+            for i in range(3):
+                if dist[params[i]][t] > dist[params[i+1]][t]:
+                    print("s\n")
+                    utils.showModel(dist)
+                    utils.showModel(model)
+                    raise Exception(f"When calculating distribution '{params[i+1]}' can't be smaller than '{params[i]}'!") 
         return dist
 
-    def getDpm(self, d, p) -> dict[str, dict[str, list[int]]]:
+    def getDpm(self, cd, p, k=0) -> dict[str, dict[str, list[int]]]:
         n = self.real_horizon
         params = ["a", "b", "c", "d"]
-        dist = {a: self.getFuzzyDist(d[a][p], self.d_model[a][p], n) for a in self.itProductAff(p)}
-        return {param: [sum([dist[a][param][t] for a in dist]) for t in range(n)] for param in params}
+        dist = {a: self.getFuzzyDist(cd[a][p], self.d_model[a][p], n, s0=0, k=k) for a in self.itProductAff(p)}
+        dist = {param: [sum([dist[a][param][t] for a in dist]) for t in range(n)] for param in params}       
+        for t in range(n):
+            if t > 0:
+                dist["a"][t] = max(dist["a"][t-1], dist["a"][t]) 
+                dist["b"][t] = max(dist["b"][t-1], dist["b"][t]) 
+            tr = n - 1 - t
+            if tr < n - 1:
+                dist["c"][tr] = min(dist["c"][tr], dist["c"][tr+1])
+                dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
+            dist["b"][t] = max(dist["a"][t], dist["b"][t]) 
+            dist["c"][t] = max(dist["b"][t], dist["c"][t])  
+            dist["d"][t] = max(dist["c"][t], dist["d"][t])
+        for t in range(n):
+            if dist["d"][t] < dist["c"][t]:
+                raise Exception("d cant be smaller than c")
+        return dist
 
-    def getRpm(self, r, p, s0) ->  dict[str, list[int]]:
+    def getRpm(self, cr, p, s0, k=0) ->  dict[str, list[int]]:
         n = self.real_horizon
-        dist =  self.getFuzzyDist(r[p], self.r_model[p], n, s0)
+        dist =  self.getFuzzyDist(cr[p], self.r_model[p], n, s0=s0, k=k)
         return dist
     
     @staticmethod
     def l4n(a: int, b: int, c: int, d: int, x: int) -> float:
-        if a > d:
+        if d < c:
+            raise Exception("d cant be smaller than c")
+        if a >= d:
             return 1
         if x == c or x == b:
             return 0
-        if c >= b:
+        if c >= b: 
             return utils.affineY(c, d, x) + 1 - utils.affineY(a, b, x)
         if c < b:
             x_star = ((b - a) * c + b * (d - c)) / (b - a + d - c)
@@ -157,14 +166,19 @@ class RiskManager(Shared):
 
     @staticmethod
     def getL4Necessity(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list) -> list[float]:
-        l4_necessity = [RiskManager.l4n(a, b, c, d, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
+        try:
+            l4_necessity = [RiskManager.l4n(a, b, c, d, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
+        except:
+            print("\n")
+            utils.showModel(rpm)
+            raise
         return l4_necessity
     
     def getRobustness(self, l4p: list[float]) -> float:
-        return min([1 - v for v in l4p[self.fixed_horizon-1:]])
+        return min([1 - v for v in l4p[self.fixed_horizon:self.real_horizon]])
 
     def getFrequency(self, l4p: list[float]) -> int:
-        return sum([v > 0 for v in l4p[self.fixed_horizon-1:]]) / len(l4p[self.fixed_horizon-1:])
+        return sum([v > 0 for v in l4p[self.fixed_horizon:self.real_horizon]]) / len(l4p[self.fixed_horizon:self.real_horizon])
 
     def getSeverity(self, l4n: list[float]) -> int:
-        return max(l4n[self.fixed_horizon-1:])
+        return max(l4n[self.fixed_horizon:self.real_horizon])

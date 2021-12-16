@@ -1,9 +1,10 @@
 import json
 import copy
 import openpyxl
-from . import Shared, Affiliate, CDC, Factory
+from . import Shared, Affiliate, CDC, Factory, utils
 
 class Model(Shared):
+    
     def __init__(self) -> None:
         super().__init__()     
         self.week = None
@@ -11,15 +12,13 @@ class Model(Shared):
         self.prev_production = None
         self.prev_supply = None
         self.sales_forcast = None
-        self.affiliates = {name: Affiliate(name) for name in self.affiliate_name}
+        self.affiliates = {name: Affiliate(name) for name in self.itAffiliates()}
         self.factory = Factory()
         self.cdc = CDC()
 
     def getProductSalesForcast(self):
-        return {p: [
-            sum([self.sales_forcast[a][p][t] for a in self.itProductAff(p)]) for t in range(self.horizon)
-        ] for p in self.products}
-
+        return self.sumOverAffiliate(self.sales_forcast)
+    
     def loadSalesForcast(self, file_p):
         with open(file_p) as fp:
             self.sales_forcast = json.load(fp)
@@ -46,18 +45,14 @@ class Model(Shared):
                     (self.cdc.supply[a][p][0] if aff.delivery_time==0 else 0) - self.sales_forcast[a][p][0] 
                 for p in aff.products
             } 
-        initial_stock["cdc"]= {}
-        for p in self.products:
-            initial_stock["cdc"][p] = self.cdc.initial_stock[p] + self.cdc_reception[p][0] - self.cdc_product_supply[p][0]
-            if initial_stock["cdc"][p] < 0:
-                raise Exception("CDC cant have negative stock")
+        initial_stock["cdc"] = {p: self.cdc.projected_stock[p][0] for p in self.products}
         return initial_stock
 
     def getNextSupply(self):
         next_supply = {}
         for a, aff in self.affiliates.items():
             next_supply[a] = {}
-            for p in self.affiliate_products[a]:
+            for p in self.itAffProducts(a):
                 next_supply[a][p] = self.prev_supply[a][p][1:aff.delivery_time+1] +\
                     self.cdc_supply[a][p][1:self.horizon-aff.delivery_time] +\
                         [self.cdc_supply[a][p][self.horizon-aff.delivery_time-1]]
@@ -80,21 +75,27 @@ class Model(Shared):
             json.dump(data, fp)
         return data
 
-    def runWeek(self):
+    def getAffiliatesDemand(self, prev_supply, sales_forcast):        
+        aff_d = {}
         for a, affiliate in self.affiliates.items():
             affiliate.initial_stock = self.initial_stock[a]
-            affiliate.run(self.sales_forcast[a], self.prev_supply[a])
+            aff_d[a] = affiliate.getDemand(sales_forcast[a], prev_supply[a])
+        return aff_d
+            
+    def runWeek(self, sales_forcast):
+        self.sales_forcast = sales_forcast
+        self.aff_demand = self.getAffiliatesDemand(self.sales_forcast, self.prev_supply)
+        self.cdc_demand = self.getCDCDemand(self.aff_demand)
         self.cdc.initial_stock = self.getCDCInitialStock()
-        self.cdc_demand = self.getCDCDemand()
         self.cdc_prev_supply = self.getCDCPrevSupply()
         self.cdc_product_demand = self.sumOverAffiliate(self.cdc_demand)
         self.cdc_prod_demand = self.cdc.getProdDemand(self.prev_production, self.cdc_product_demand)
         self.factory_prod_demand = {p: self.cdc_prod_demand[p][self.prod_time:] + [0] * self.prod_time for p in self.products}
         self.factory_prev_production = {p: self.prev_production[p][self.prod_time:] + [0] * self.prod_time for p in self.products}
-        self.factory.run(self.factory_prod_demand, self.factory_prev_production)
+        self.factory.getProduction(self.factory_prod_demand, self.factory_prev_production)
         self.cdc_reception = self.getCDCReception()
-        self.cdc_supply, self.cdc_product_supply, self.cdc_dept = self.cdc.run(self.cdc_prev_supply, self.cdc_demand, self.cdc_reception)
-
+        self.cdc_supply, self.cdc_product_supply, self.cdc_dept = self.cdc.getAffSupply(self.cdc_prev_supply, self.cdc_demand, self.cdc_reception)
+ 
     def getSnapShot(self):
         snap = {
             "week": self.week,
@@ -151,7 +152,7 @@ class Model(Shared):
         i = 0
         while sheet.cell(2 + i, 1).value:
             quantity = int(sheet.cell(2 + i, 2).value)
-            affiliate = self.affiliate_code[sheet.cell(2 + i, 3).value]
+            affiliate = self.getAffByCode(sheet.cell(2 + i, 3).value)
             week = int(sheet.cell(2 + i, 6).value.split("/")[0][1:])
             product = sheet.cell(2 + i, 12).value
             if affiliate not in demand:
@@ -162,11 +163,11 @@ class Model(Shared):
             i += 1
         return demand
     
-    def getCDCDemand(self) -> dict[str, dict[str, list[int]]]:
+    def getCDCDemand(self, aff_demand) -> dict[str, dict[str, list[int]]]:
         return {a: {
-            p: aff.demand[p][aff.delivery_time:] + [0] * aff.delivery_time for p in aff.products
+            p: aff_demand[a][p][aff.delivery_time:] + [0] * aff.delivery_time for p in aff.products
         } for a, aff in self.affiliates.items()}
-    
+     
     def getCDCInitialStock(self):
         return self.initial_stock["cdc"]
         
@@ -180,9 +181,12 @@ class Model(Shared):
         else:
             return self.prev_production
 
-    def getCDCPrevSupply(self):
+    def getCDCPrevSupply(self, prev_supply=None):
+        if not prev_supply:
+            prev_supply = self.prev_supply
         cdc_prev_supply = {a: 
-            {p: self.prev_supply[a][p][aff.delivery_time:] + [0] * (self.horizon-aff.delivery_time) for p in self.affiliate_products[a]}     
+            {p: prev_supply[a][p][aff.delivery_time:] + [0] * (self.horizon-aff.delivery_time) for p in self.itAffProducts(a)}     
             for a, aff in self.affiliates.items()
         }
         return cdc_prev_supply
+    

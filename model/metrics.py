@@ -1,30 +1,44 @@
 
 import openpyxl
-import math
-from model import history
-from model.risk import RiskManager
 from . import History, utils
+import math
 
 
-def periodMean(q_hist: list[list[int]], t: int, fh: int):
-    n = len(q_hist[0])
-    res = 0
-    for k in range(n):
-        res += q_hist[t - k][k]
-    return res / (n - fh + 1)
+def getMean(q):
+    size = len(q)
+    return sum(q) / size
 
-def getMeanAbsDiff(cq_hist: list[dict[str, list[int]]], t: int, fh: int, h: int, p: str) -> float:
-    res = 0
-    for k in range(fh-1, h-2):
-        y = t - k
-        res += abs(cq_hist[y][p][k] - cq_hist[y-1][p][k+1] + cq_hist[y-1][p][0])
-    return res / (h - (fh-1) - 2)
+def var(q, m):
+    size = len(q)
+    sigma = sum([(q[t] - m)**2 for t in range(size)]) / size
+    var = math.sqrt(sigma)
+    return var
 
-def getMeanVarMetric(q_metric: dict):
-    q_metric_mean   = {p: utils.mean(q_metric[p]) for p in q_metric}
-    q_metric_var    = {p: utils.var(q_metric[p], q_metric_mean[p]) for p in q_metric}
-    return {"mean": q_metric_mean, "var": q_metric_var}
+def getSigma(q, m):
+    size = len(q)
+    sigma = sum([(q[t] - m)**2 for t in range(size)]) / size
+    return sigma
 
+def getDiffHist(cq_hist, p, q_size, fh):
+    res = [[None] * q_size] * (q_size - 1 - fh)
+    for t in range(q_size - 1, 2 * q_size - 1):
+        for k in range(fh-1, q_size - 2):
+            y = t - k
+            res[k - fh + 1][t - (q_size - 1)] = cq_hist[y][p][k] - cq_hist[y-1][p][k+1]
+    return res
+
+def getMeanVarDiffHist(cqdh):
+    nrows = len(cqdh)
+    mean_ = 0
+    for w in range(nrows):
+        mean_ += getMean(cqdh[w])
+    mean_ /= nrows
+    sigma_ = 0
+    for w in range(nrows):
+        sigma_ += getSigma(cqdh[w], mean_)
+    var = math.sqrt(sigma_ / nrows)
+    return mean_, var
+        
 def exportToExcel(hist1: History, hist2: History, dst_f):
     wb = openpyxl.load_workbook(hist1.indicators_template_f)
     sh = wb.active
@@ -54,14 +68,35 @@ def exportToExcel(hist1: History, hist2: History, dst_f):
     col = 23
     n = hist1.real_horizon
     fh = hist1.fixed_horizon
-    cpa1_metric = {p: [getMeanAbsDiff(hist1.cproduct_supply, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
-    cpa2_metric = {p: [getMeanAbsDiff(hist2.cproduct_supply, t, fh, n, p) for t in range(n - 1, 2 * n - 1)] for p in hist1.products}
-    cpa1_var = getMeanVarMetric(cpa1_metric)
-    cpa2_var = getMeanVarMetric(cpa2_metric)
+    
+    # calculate and show mean and variance of diffs
     for p in products:
-        sh.cell(curr_row, col).value = cpa1_var['var'][p]
-        sh.cell(curr_row, col + 1).value = cpa2_var['var'][p]
+        cqdh1 = getDiffHist(hist1.cproduct_supply, p, n, fh)
+        cqdh2 = getDiffHist(hist2.cproduct_supply, p, n, fh)
+        mean1, var1 = getMeanVarDiffHist(cqdh1)
+        mean2, var2 = getMeanVarDiffHist(cqdh2)
+
+        if mean1 == 0:
+            if var1 == 0:
+                varn1 = 1
+            else:
+                varn1 = 9999999999999999999
+        else:
+            varn1 = var1 / mean1
+        if mean2 == 0:
+            if var2 == 0:
+                varn2 = 1
+            else:
+                varn2 = 9999999999999999999
+        else:
+            varn2 = var2 / mean2
+        sh.cell(curr_row, col).value = abs(varn1)
+        sh.cell(curr_row, col + 1).value = abs(varn2)
+        print("\n", p)
+        print("S1 nervousness: ", abs(varn1))
+        print("S2 nervousness: ", abs(varn2))
         curr_row += 1
+        
     wb.save(dst_f)
 
 

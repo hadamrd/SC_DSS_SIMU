@@ -1,13 +1,12 @@
 from . import Shared
-from . import RiskManager, Model
-from . import utils
-import math
+from . import RiskManager
 
 class SmoothingFilter(Shared):
 
     def __init__(self) -> None:
         super().__init__()
-        self.params = self.settings["smoothing"]
+        self.range = self.settings["smoothing"]["range"]
+        self.optimisme = self.settings["smoothing"]["optimisme"]
 
     def validateOutput(self, x_in: list[int], x_out: list[int]):
         n = len(x_out)
@@ -15,39 +14,29 @@ class SmoothingFilter(Shared):
             raise Exception(f"Solution size {len(x_out)} != input size {len(x_in)}!")
         for t in range(1, n):
             if x_out[t] < x_out[t-1]:
+                print(x_out)
                 raise Exception(f"x_out[{t}] = {x_out[t]} < x_out[{t-1}] = {x_out[t-1]}!")
     
-    def findFirstSolvable(self, x, unsolvable, idx, start, end):
-        for j in range(idx, start, -1):
-            if j not in unsolvable:
-                return x[j]
-        for j in range(idx, end):
-            if j not in unsolvable:
-                return x[j]
-        return x[idx]
-        
     def smooth(self, rpm: dict[str, list[int]], dpm: dict[str, list[int]], x_in: list[int]):
         x = x_in.copy()
-        start = self.params["range"]["start"]
-        end = self.params["range"]["end"]
-        unsolvable = set()
+        start = self.range["start"]
+        end = self.range["end"]
+        u = self.settings["smoothing"]["optimisme"]
         for t in range(start, end):
             c, d = rpm["c"][t], rpm["d"][t] 
             a, b = dpm["a"][t], dpm["b"][t]
             l4n_min = RiskManager.getMinL4n(a, b, c, d)
             if l4n_min >= self.l4n_threshold:
-                unsolvable.add(t) 
-                continue
-            x1, x2 = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
-            u = 0.5
-            x[t] = round(u * x1 + (1 - u) * x2)
-        for idx in unsolvable:
-            x[idx] = self.findFirstSolvable(x, unsolvable, idx, start, end)
-        if start > 0:
-            for t in range(start, end):
-                x[t] = max(x[t-1], x[t])
-        if end < self.real_horizon:
-            for t in range(end-1, start, -1):
-                x[t] = min(x[t], x[t+1])
+                tgt = d
+            else:
+                x1, x2 = RiskManager.getL4nAlphaBound(self.l4n_threshold, a, b, c, d)
+                tgt = round(u * x1 + (1 - u) * x2)
+            # x[t] = min(tgt, dpm["d"][t])
+            x[t] = tgt
+        print(x)
+        for t in range(start, self.real_horizon-1):
+            x[t] = max(x[t-1], x[t])
+        for t in range(self.real_horizon-2, start-1, -1):
+            x[t] = min(x[t], x[t+1])
         self.validateOutput(x_in, x)
         return x
