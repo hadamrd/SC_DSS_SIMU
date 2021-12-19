@@ -28,9 +28,10 @@ class Simulation(Shared):
         stock_ini["cdc"] = {p: self.settings["cdc"]["initial_stock"][p] for p in self.products}
         r0 = sum([self.getAffPvRange(a) for a in self.itAffiliates()])
         crecep_ini = {}
+        cqpm = {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]}
         for p in self.products:
             crecep_ini_ = utils.genRandCQ(self.horizon, r0)
-            crecep_ini[p] = utils.genRandCQFromUCM(r_model[p], crecep_ini_, 0)
+            crecep_ini[p] = utils.genRandCQFromUCM(cqpm, r_model[p], crecep_ini_, 0)
             crecep_ini[p] += (self.horizon-self.real_horizon)*[crecep_ini[p][self.real_horizon-1]]
             utils.validateCQ(crecep_ini[p])
         recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.products}
@@ -39,6 +40,7 @@ class Simulation(Shared):
             {p: ini_sales[a][p][int(aff["delivery_time"]):] + [0] * (self.horizon-int(aff["delivery_time"])) for p in self.itAffProducts(a)}     
             for a, aff in self.settings["affiliate"].items()
         }
+
         input = {
             "prev_production": recep_ini,
             "crecep_ini": crecep_ini,
@@ -114,6 +116,7 @@ class Simulation(Shared):
                 cdemand_ref[a][p][:self.horizon] = list(utils.accumu(demand_ini[a][p]))
             creception_ref[p][:self.horizon] = ini_input["crecep_ini"][p]
         
+        dpm = rpm = {p: {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]} for p in self.products}
         cpr = {p: 0 for p in self.products}
         
         # start main loop
@@ -149,7 +152,7 @@ class Simulation(Shared):
                 creception_ref[p][k+self.horizon] = creception_ref[p][k+self.horizon-1] + reception[p][self.horizon-1]
             
             # calculate distributions
-            dpm, rpm = self.risk_manager.getDitributions(cdemand_ref, creception_ref, stock_ini, k)
+            dpm, rpm = self.risk_manager.getDitributions(dpm, rpm, cdemand_ref, creception_ref, stock_ini, k)
 
             # Create data snapshot
             snapshot = self.model.getSnapShot()

@@ -35,13 +35,13 @@ class RiskManager(Shared):
             res["adaptability"][p]  = 1 - l4n[-1]
         return res
 
-    def getDitributions(self, cdemand_ref, creception_ref, initial_stock, k=0):
+    def getDitributions(self, prev_dpm, prev_rpm, cdemand_ref, creception_ref, initial_stock, k=0):
         rpm = {p: None for p in self.products}
         dpm = {p: None for p in self.products}
         for p in self.products:
             s0 = initial_stock[p]
-            rpm[p] = self.getRpm(creception_ref, p, s0, k)
-            dpm[p] = self.getDpm(cdemand_ref, p, k)
+            rpm[p] = self.getRpm(prev_rpm, creception_ref, p, s0, k)
+            dpm[p] = self.getDpm(prev_dpm, cdemand_ref, p, k)
         return dpm, rpm
 
     def loadRModel(self, file_name):
@@ -52,44 +52,10 @@ class RiskManager(Shared):
         with open(file_name,) as fp:
             self.d_model = json.load(fp)
 
-    def getFuzzyDist(self, cq, model, n, s0=0, k=0):
-        params = ["a", "b", "c", "d"]
-        dist = {param: [None] * n for param in params}
-        for t in range(n):
-            t0 = model["RefWeek"][t] - 1
-            model_type = model["ModelType"][t] 
-            for param in params:
-                alpha_t = model[param][t]
-                F_t = cq[t+k] - cq[k+t0-1] if k+t0-1 > 0 else cq[t+k]
-                if F_t < 0:
-                    print("hhhhhhhhhhhhhhh", t+k, k+t0-1)
-                    print(cq)
-                    print(cq[t+k], cq[k+t0-1])
-                    raise Exception("F_t can't be negative")
-                if model_type == "I1":
-                    F_t /= t - t0 + 1
-                dist[param][t] = round(cq[t+k] + alpha_t * F_t + s0)
-        for t in range(n):
-            if t > 0:
-                dist["a"][t] = max(dist["a"][t-1], dist["a"][t]) 
-                dist["b"][t] = max(dist["b"][t-1], dist["b"][t]) 
-            tr = n - 1 - t
-            if tr < n - 1:
-                dist["c"][tr] = min(dist["c"][tr], dist["c"][tr+1])
-                dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
-        for t in range(n):
-            for i in range(3):
-                if dist[params[i]][t] > dist[params[i+1]][t]:
-                    print("s\n")
-                    utils.showModel(dist)
-                    utils.showModel(model)
-                    raise Exception(f"When calculating distribution '{params[i+1]}' can't be smaller than '{params[i]}'!") 
-        return dist
-
-    def getDpm(self, cd, p, k=0) -> dict[str, dict[str, list[int]]]:
+    def getDpm(self, dpm, cd, p, k=0) -> dict[str, dict[str, list[int]]]:
         n = self.real_horizon
         params = ["a", "b", "c", "d"]
-        dist = {a: self.getFuzzyDist(cd[a][p], self.d_model[a][p], n, s0=0, k=k) for a in self.itProductAff(p)}
+        dist = {a: utils.getFuzzyDist(dpm[p], cd[a][p], self.d_model[a][p], n, s0=0, k=k) for a in self.itProductAff(p)}
         dist = {param: [sum([dist[a][param][t] for a in dist]) for t in range(n)] for param in params}       
         for t in range(n):
             if t > 0:
@@ -99,17 +65,16 @@ class RiskManager(Shared):
             if tr < n - 1:
                 dist["c"][tr] = min(dist["c"][tr], dist["c"][tr+1])
                 dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
-            dist["b"][t] = max(dist["a"][t], dist["b"][t]) 
-            dist["c"][t] = max(dist["b"][t], dist["c"][t])  
-            dist["d"][t] = max(dist["c"][t], dist["d"][t])
+                # dist["a"][tr] = max(dist["a"][tr], dist["a"][tr+1])
+                # dist["b"][tr] = max(dist["b"][tr], dist["b"][tr+1])
         for t in range(n):
             if dist["d"][t] < dist["c"][t]:
                 raise Exception("d cant be smaller than c")
         return dist
 
-    def getRpm(self, cr, p, s0, k=0) ->  dict[str, list[int]]:
+    def getRpm(self, rpm, cr, p, s0, k=0) ->  dict[str, list[int]]:
         n = self.real_horizon
-        dist =  self.getFuzzyDist(cr[p], self.r_model[p], n, s0=s0, k=k)
+        dist =  utils.getFuzzyDist(rpm[p], cr[p], self.r_model[p], n, s0=s0, k=k)
         return dist
     
     @staticmethod

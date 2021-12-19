@@ -85,21 +85,43 @@ def genUCM(model_args, model_type="I1"):
         s += size
     return model
 
-def getPDist(cq, model: dict, w):
-    a = model["a"]
-    b = model["b"]
-    c = model["c"]
-    d = model["d"]
-    mt = model["ModelType"]
-    rw = model["RefWeek"]
-    size = len(a)
-    f = [cq[w + t] - cq[w + t0 - 1] if w + t0 > 0 else cq[t+w] for t, t0 in zip(range(size), rw)]
-    return {
-        "A": [round(cpv + f * a) for cpv, f, a in zip(cq[w:w+size], f, a)],
-        "B": [round(cpv + f * b) for cpv, f, b in zip(cq[w:w+size], f, b)],
-        "C": [round(cpv + f * c) for cpv, f, c in zip(cq[w:w+size], f, c)],
-        "D": [round(cpv + f * d) for cpv, f, d in zip(cq[w:w+size], f, d)]
-    }
+def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0):
+    params = ["a", "b", "c", "d"]
+    dist = {param: [None] * n for param in params}
+    for param in params:
+        for t in range(n):
+            t0 = model["RefWeek"][t] - 1
+            model_type = model["ModelType"][t] 
+            alpha_t = model[param][t]
+            if prev_dist[param][0] is None:
+                print(k, prev_dist[param])
+            prev_param = dist[param][t-1] if t > 0 else prev_dist[param][0]
+            F_t = cq[t+k] - cq[k+t0-1] if k + t0 - 1 > 0 else cq[t+k]
+            if F_t < 0:
+                raise Exception("F_t can't be negative")
+            if model_type == "I1":
+                F_t /= t - t0 + 1
+            dist[param][t] = round(prev_param + F_t +(alpha_t * F_t ) + s0)
+        validateCQ(dist[param])
+
+    # for t in range(n):
+    #     if t > 0:
+    #         dist["a"][t] = max(dist["a"][t-1], dist["a"][t]) 
+    #         dist["b"][t] = max(dist["b"][t-1], dist["b"][t]) 
+    #     tr = n - 1 - t
+    #     if tr < n - 1:
+    #         dist["c"][tr] = min(dist["c"][tr], dist["c"][tr+1])
+    #         dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
+
+    for t in range(n):
+        for i in range(3):
+            if dist[params[i]][t] > dist[params[i+1]][t]:
+                print("s\n")
+                utils.showModel(dist)
+                utils.showModel(model)
+                raise Exception(f"When calculating distribution '{params[i+1]}' can't be smaller than '{params[i]}'!")
+
+    return dist
 
 def pickRand(a, b, c, d):
     alpha = random.random()
@@ -114,14 +136,13 @@ def pickRand(a, b, c, d):
 def genRandCQ(size, q0):
     return list(accumu(randQ(size, q0)))
     
-def genRandCQFromUCM(ucm: dict, cq: list, w):
-    cqpm = getPDist(cq, ucm, w)
+def genRandCQFromUCM(prev_dist, ucm: dict, cq: list, w):
     n = len(ucm["a"])
+    cqpm = getFuzzyDist(prev_dist, cq, ucm, n, k=w)
     cres = [0 for _ in range(n)]
-    A, B, C, D = cqpm.values()
     for t in range(n):
-        rand_q = pickRand(A[t], B[t], C[t], D[t])
-        cres[t] = max(rand_q, cres[t-1] if t>0 else 0)
+        rand_q = pickRand(cqpm["a"][t], cqpm["b"][t], cqpm["c"][t], cqpm["d"][t])
+        cres[t] = max(rand_q, cres[t-1] if t > 0 else 0)
     utils.validateCQ(cres)
     return cres
 
@@ -129,8 +150,14 @@ def genRandCQHist(size, ucm, q0):
     size_q = len(ucm["a"])
     hist = [None] * size
     cq_ref = list(accumu(randQ(size_q + size, q0)))
+    cqpm = {param: [0 for _ in range(size_q)] for param in ["a", "b", "c", "d"]}
     for w in range(size):
-        hist[w] = genRandCQFromUCM(ucm, cq_ref, w)
+        hist[w] = [0 for _ in range(size_q)]
+        cqpm = getFuzzyDist(cqpm, cq_ref, ucm, size_q, k=w)
+        for t in range(size_q):
+            rand_q = pickRand(cqpm["a"][t], cqpm["b"][t], cqpm["c"][t], cqpm["d"][t])
+            hist[w][t] = max(rand_q, hist[w][t-1] if t > 0 else 0)
+        utils.validateCQ(hist[w])
     return hist 
 
 def genRandQHist(size, ucm, q0):
@@ -139,6 +166,9 @@ def genRandQHist(size, ucm, q0):
     for w in range(size):
         res[w] = diff(chist[w])
         res[w][0] -= chist[w-1][0] if w > 0 else 0
+        if res[w][0] < 0:
+            print(res[w][0], chist[w-1][0])
+            raise Exception("PV can't be negative!")
     return res
     
 def validateCQ(cq):
