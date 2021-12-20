@@ -3,8 +3,7 @@ import json
 import math
 import random
 import numpy as np 
-from . import utils 
-
+import logging
 
 def writeRow(sh, row: int, start_col: int, lis: list):
     for t, v in enumerate(lis):
@@ -56,17 +55,20 @@ def replicateFile(src, dst):
     with open(dst, "w") as fp:
         json.dump(src_d, fp)
 
-def show(name, q):
-    format_row = "{:>7}" + "{:>7}" * len(q)
-    print(format_row.format(name, *q))
-
-def showModel(model):
+def getModelStr(model):
+    res = "Model:\n"
+    size = len(model['a'])
+    format_row = "{:>7}" + "{:>7}" * size
+    res += format_row.format("week", *[f"W{t}" for t in range(size)])
     for k, v in model.items():
         if k not in ["RefWeek", "ModelType"]:
-            show(k, [round(_, 2) for _ in v])
-        else:
-            show(k, v)
-        
+            res += "\n" + format_row.format(k, *[round(_, 2) for _ in v])
+        elif k == "RefWeek":
+            res += "\n" + format_row.format("t0", *[_ - 1 for _ in v])
+        elif k == "ModelType":
+            res += "\n" + format_row.format("MT", *v)
+    return res
+    
 def randQ(size_q, q0):
     return np.random.poisson(q0, size_q)
 
@@ -85,21 +87,53 @@ def genUCM(model_args, model_type="I1"):
         s += size
     return model
 
-def getPDist(cq, model: dict, w):
-    a = model["a"]
-    b = model["b"]
-    c = model["c"]
-    d = model["d"]
-    mt = model["ModelType"]
-    rw = model["RefWeek"]
-    size = len(a)
-    f = [cq[w + t] - cq[w + t0 - 1] if w + t0 > 0 else cq[t+w] for t, t0 in zip(range(size), rw)]
-    return {
-        "A": [round(cpv + f * a) for cpv, f, a in zip(cq[w:w+size], f, a)],
-        "B": [round(cpv + f * b) for cpv, f, b in zip(cq[w:w+size], f, b)],
-        "C": [round(cpv + f * c) for cpv, f, c in zip(cq[w:w+size], f, c)],
-        "D": [round(cpv + f * d) for cpv, f, d in zip(cq[w:w+size], f, d)]
-    }
+def validateFuzzyCDist(fcdist):
+    params = ["a", "b", "c", "d"]
+    n = len(fcdist["a"])
+    for param in params:
+        try:
+            validateCQ(fcdist[param])
+        except Exception as e:
+            print("Validation failed for param : ", param)
+            raise e 
+    for t in range(n):
+        for i in range(3):
+            if fcdist[params[i]][t] > fcdist[params[i+1]][t]:
+                raise Exception(f"Dist param '{params[i+1]}' can't be smaller than '{params[i]}'!")
+
+def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0, fh=0):
+    logging.debug("calcul fuzzy dist with:")
+    log_msg = getModelStr(model)
+    format_row = "{:>7}" + "{:>7}" * n
+    log_msg += "\n"+ format_row.format("CQ", *cq[k:k+n])
+    params = ["a", "b", "c", "d"]
+    dist = {param: [None] * n for param in params}
+    F = [None] * n
+    model_type = model["ModelType"][0] 
+    for t in range(n):
+        t0 = model["RefWeek"][t] - 1
+        F[t] = cq[t + k] - cq[k + t0 - 1] if k + t0 > 0 else cq[t + k]            
+        if F[t] < 0:
+            raise Exception("F_t can't be negative")
+        if model_type == "I1":
+            F[t] /= t - t0 + 1
+    log_msg += "\n"+ format_row.format("F", *[round(_, 2) for _ in F])
+    logging.debug(log_msg)
+    for param in params:
+        logging.debug("calculs fd for param: " + param)
+        alpha = model[param]
+        for t in range(n):
+            t0 = model["RefWeek"][t] - 1
+            prev_param = dist[param][t0 - 1] if t0 > 0 else prev_dist[param][0]
+            dist[param][t] = math.floor(prev_param + (1 + alpha[t]) * F[t] + s0)
+            logging.debug(f"t: {t}, t0: {t0}, F(t): {F[t]}, {param.lower()}(t): {alpha[t]}, {param.upper()}(t0-1): {prev_param} ===> {param.upper()}(t) = {param.upper()}(t0-1) + (1 + {param.lower()}(t)) * F(t) = {dist[param][t]}")
+            if t > 0 and model_type == "I2" and dist[param][t] < dist[param][t-1]:
+                raise Exception(f"While calculating cum dist for param {param}, got a non cumulated result!")
+            if t < fh and dist[param][t] != cq[k+t]:
+                raise Exception("Params must be equal to cq in fixed horizon")
+    logging.debug(getModelStr(dist))
+    validateFuzzyCDist(dist)
+    return dist
 
 def pickRand(a, b, c, d):
     alpha = random.random()
@@ -114,31 +148,40 @@ def pickRand(a, b, c, d):
 def genRandCQ(size, q0):
     return list(accumu(randQ(size, q0)))
     
-def genRandCQFromUCM(ucm: dict, cq: list, w):
-    cqpm = getPDist(cq, ucm, w)
+def genRandCQFromUCM(prev_dist, ucm: dict, cq: list, w):
     n = len(ucm["a"])
+    cqpm = getFuzzyDist(prev_dist, cq, ucm, n, k=w)
     cres = [0 for _ in range(n)]
-    A, B, C, D = cqpm.values()
     for t in range(n):
-        rand_q = pickRand(A[t], B[t], C[t], D[t])
-        cres[t] = max(rand_q, cres[t-1] if t>0 else 0)
-    utils.validateCQ(cres)
+        rand_q = pickRand(cqpm["a"][t], cqpm["b"][t], cqpm["c"][t], cqpm["d"][t])
+        cres[t] = max(rand_q, cres[t-1] if t > 0 else 0)
+    validateCQ(cres)
     return cres
 
-def genRandCQHist(size, ucm, q0):
+def genRandCQHist(size, ucm, q0, fh=0):
     size_q = len(ucm["a"])
     hist = [None] * size
     cq_ref = list(accumu(randQ(size_q + size, q0)))
+    cqpm = {param: [0 for _ in range(size_q)] for param in ["a", "b", "c", "d"]}
     for w in range(size):
-        hist[w] = genRandCQFromUCM(ucm, cq_ref, w)
+        logging.debug(f"Calcul Randomized CQ for week: {w}")
+        cqpm = getFuzzyDist(cqpm, cq_ref, ucm, size_q, k=w, fh=fh)
+        hist[w] = [0 for _ in range(size_q)]
+        for t in range(size_q):
+            rand_q = pickRand(cqpm["a"][t], cqpm["b"][t], cqpm["c"][t], cqpm["d"][t])
+            hist[w][t] = max(rand_q, hist[w][t-1] if t > 0 else 0)
+        validateCQ(hist[w])
     return hist 
 
-def genRandQHist(size, ucm, q0):
+def genRandQHist(size, ucm, q0, fh=0):
     res = [None] * size
-    chist = genRandCQHist(size, ucm, q0)
+    chist = genRandCQHist(size, ucm, q0, fh)
     for w in range(size):
         res[w] = diff(chist[w])
         res[w][0] -= chist[w-1][0] if w > 0 else 0
+        if res[w][0] < 0:
+            print(res[w][0], chist[w-1][0])
+            raise Exception("PV can't be negative!")
     return res
     
 def validateCQ(cq):

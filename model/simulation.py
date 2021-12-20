@@ -8,6 +8,8 @@ from . import Model, History
 from .filter import SmoothingFilter
 import copy
 import time
+import logging 
+
 
 class Simulation(Shared):
     count = 1
@@ -24,13 +26,16 @@ class Simulation(Shared):
         self.sales_folder    = None
 
     def getInitInput(self, ini_sales, r_model):
+        logging.debug("Generating initial input ...")
         stock_ini = {a: {p: self.settings["affiliate"][a]["initial_stock"][p] for p in self.itAffProducts(a)} for a in self.itAffiliates()}
         stock_ini["cdc"] = {p: self.settings["cdc"]["initial_stock"][p] for p in self.products}
         r0 = sum([self.getAffPvRange(a) for a in self.itAffiliates()])
         crecep_ini = {}
+        cqpm = {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]}
         for p in self.products:
+            logging.debug(f"Generating initial reception(pdp) for product {p}")
             crecep_ini_ = utils.genRandCQ(self.horizon, r0)
-            crecep_ini[p] = utils.genRandCQFromUCM(r_model[p], crecep_ini_, 0)
+            crecep_ini[p] = utils.genRandCQFromUCM(cqpm, r_model[p], crecep_ini_, 0)
             crecep_ini[p] += (self.horizon-self.real_horizon)*[crecep_ini[p][self.real_horizon-1]]
             utils.validateCQ(crecep_ini[p])
         recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.products}
@@ -39,6 +44,7 @@ class Simulation(Shared):
             {p: ini_sales[a][p][int(aff["delivery_time"]):] + [0] * (self.horizon-int(aff["delivery_time"])) for p in self.itAffProducts(a)}     
             for a, aff in self.settings["affiliate"].items()
         }
+
         input = {
             "prev_production": recep_ini,
             "crecep_ini": crecep_ini,
@@ -75,8 +81,6 @@ class Simulation(Shared):
                 print(format_row.format("prev x", *prev_cpsupplly[p][:n]))
                 print(format_row.format("demand ref", *cpdemande_ref[p][k:k+n]))
                 print("-" * nchars)
-                # print(format_row.format("capacity", *list(utils.accumu(capacity[p]))[:n]))
-                # print(format_row.format("bp", *self.model.cdc.bp[p][:n]))
                 print(format_row.format("reception", *creception[p][:n]))
                 print(format_row.format("reception ref", *creception_ref[p][k:k+n]))
                 print(format_row.format("dept", *product_dept[p][:n]))
@@ -113,11 +117,14 @@ class Simulation(Shared):
             for a in self.itProductAff(p):
                 cdemand_ref[a][p][:self.horizon] = list(utils.accumu(demand_ini[a][p]))
             creception_ref[p][:self.horizon] = ini_input["crecep_ini"][p]
-        
+            
+        rpm = {p: {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]} for p in self.products}
+        dpm = {a: {p: {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]} for p in self.itAffProducts(a)} for a in self.itAffiliates()}
         cpr = {p: 0 for p in self.products}
         
         # start main loop
         for w in range(start_week, end_week + 1):
+            print(".", end="", flush=True)
             k = w - start_week
             next_input_f = os.path.join(self.inputs_folder, f"input_S{k+1}.json")
             # snapshot_f = os.path.join(self.history_folder, f"snapshot_S{k}.json")
@@ -149,7 +156,8 @@ class Simulation(Shared):
                 creception_ref[p][k+self.horizon] = creception_ref[p][k+self.horizon-1] + reception[p][self.horizon-1]
             
             # calculate distributions
-            dpm, rpm = self.risk_manager.getDitributions(cdemand_ref, creception_ref, stock_ini, k)
+            dpm, rpm = self.risk_manager.getDitributions(dpm, rpm, cdemand_ref, creception_ref, stock_ini, k)
+            pdpm = {p: {param: [sum([dpm[a][p][param][t] for a in self.itProductAff(p)]) for t in range(self.real_horizon)] for param in ['a', 'b', 'c', 'd']} for p in self.products}
 
             # Create data snapshot
             snapshot = self.model.getSnapShot()
@@ -159,13 +167,13 @@ class Simulation(Shared):
             snapshot["supply"] = supply
 
             # gather metrics
-            snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpsupply)
+            snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(pdpm, rpm, cpsupply)
             n = self.real_horizon
             cpsupply_out = self.getEmptyProductQ(0)
             
             # In case there is a filter apply it
             if smoothing_filter:
-                cpsupply_out = {p: smoothing_filter.smooth(rpm[p], dpm[p], cpsupply[p][:n]) for p in self.products}
+                cpsupply_out = {p: smoothing_filter.smooth(rpm[p], pdpm[p], cpsupply[p][:n]) for p in self.products}
                 psupply_out = {p: utils.diff(cpsupply_out[p], cpr[p]) + product_supply[p][n:] for p in self.products}
                 cpsupply_out = {p: cpsupply_out[p] + list(utils.accumu(product_supply[p][n:], cpsupply_out[p][n-1])) for p in self.products}
                 supply_out = self.dispatch(psupply_out, demand, supply)
@@ -173,12 +181,12 @@ class Simulation(Shared):
                 snapshot["cproduct_supply"] = cpsupply_out
                 snapshot["product_supply"] = psupply_out
                 snapshot["supply"] = supply_out
-                snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(dpm, rpm, cpsupply_out)
+                snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(pdpm, rpm, cpsupply_out)
                 
             cpdemande_ref = self.sumOverAffiliate(cdemand_ref, horizon=self.horizon + nweeks)
                 
             # log simulation state 
-            self.log_state(k, dpm, rpm, cppv, cpsupply, cpsupply_out, cpdemand, creception, cpdemande_ref, creception_ref, prev_cpsupplly)
+            self.log_state(k, pdpm, rpm, cppv, cpsupply, cpsupply_out, cpdemand, creception, cpdemande_ref, creception_ref, prev_cpsupplly)
 
             # utils.saveToFile(snapshot, snapshot_f)
 
@@ -201,22 +209,23 @@ class Simulation(Shared):
             os.mkdir(self.history_folder)
         if not os.path.exists(self.inputs_folder):
             os.mkdir(self.inputs_folder)
+
         st = time.perf_counter()
-        
-        print("Generating simu history ... ", end="")
+        print("Generating simu history", end=" ", flush=True)
         self.generateHistory(
             start_week,
             end_week,
             ini_input,
             smoothing_filter=pa_filter
         )
-        print("Finished in :", time.perf_counter()-st)
+        print("Finished in :", time.perf_counter() - st)
 
-        print("Exporting history to excel files ... ", end="")
+        st = time.perf_counter()
+        print("Exporting history to excel files", end=" ", flush=True)
         self.sim_history.exportToExcel(
             prefix=Simulation.count,
             results_folder=self.results_folder
         )
-        print("Finished")
+        print(" Finished in :", time.perf_counter() - st)
 
         Simulation.count += 1

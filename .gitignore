@@ -4,3 +4,4 @@ sales_history/
 */results/
 *.pyc
 risk_indicators.xlsx
+*.log

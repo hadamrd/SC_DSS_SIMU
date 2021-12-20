@@ -144,3 +144,4 @@ class Shared:
             r_model[product][param] = quantity
             r += 1
         return r_model
+

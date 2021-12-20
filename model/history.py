@@ -76,6 +76,7 @@ class History(Shared):
                     wb["PDP"].cell(row=3+w, column=3+t+w).value = self.pdp[w][p][t]
                     wb["PA"].cell(row=3+w, column=3+t+w).value = self.product_supply[w][p][t]
             wb.save(dst_file)
+            print(".", end="", flush=True)
 
         wb = openpyxl.load_workbook(self.history_template_f)
         wb.remove_sheet(wb["PDP"])
@@ -89,3 +90,4 @@ class History(Shared):
                         wb["BA"].cell(row=3+w, column=3+t+w).value = self.ba[w][a][p][t]
                         wb["PA"].cell(row=3+w, column=3+t+w).value = self.pa[w][a][p][t]
                 wb.save(dst_file)
+                print(".", end="", flush=True)
