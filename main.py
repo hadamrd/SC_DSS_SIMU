@@ -25,7 +25,7 @@ if __name__ == "__main__":
     print("Generating sales history ", end="", flush=True)
     sales_hist = sales_manager.generateSalesHistory(nbr_weeks)
     print("Finished in ", round(time.perf_counter() - st, 2))
-    # sales_manager.saveSalesHistory(sales_hist, sales_folder) 
+    sales_manager.saveSalesHistory(sales_hist, sales_folder) 
 
     # Run without smoothing the PA plan
     print("> Working on with smoothing filter case: ")

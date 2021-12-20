@@ -38,13 +38,14 @@ class RiskManager(Shared):
         return res
 
     def getDitributions(self, prev_dpm, prev_rpm, cdemand_ref, creception_ref, initial_stock, k=0):
+        n = self.real_horizon
         rpm = self.getEmptyProductQ()
         dpm = self.getEmptyAffQ()
         for p in self.products:
             s0 = initial_stock[p]
-            rpm[p] = self.getRpm(prev_rpm, creception_ref, p, s0, k)
+            rpm[p] = utils.getFuzzyDist(prev_rpm[p], creception_ref[p], self.r_model[p], n, s0=s0, k=k)
             for a in self.itProductAff(p):
-                dpm[a][p] = self.getDpm(prev_dpm, cdemand_ref, a, p, k)
+                dpm[a][p] = utils.getFuzzyDist(prev_dpm[a][p], cdemand_ref[a][p], self.d_model[a][p], n, s0=0, k=k)
         return dpm, rpm
 
     def loadRModel(self, file_name):
@@ -54,19 +55,6 @@ class RiskManager(Shared):
     def loadDModel(self, file_name):
         with open(file_name,) as fp:
             self.d_model = json.load(fp)
-
-    def getDpm(self, prev_dpm, cd, a, p, k=0) -> dict[str, dict[str, list[int]]]:
-        n = self.real_horizon
-        logging.debug(f"Calcul Fuzzy dist for demand, week {k}, affiliate {a}, product {p}")
-        dist = utils.getFuzzyDist(prev_dpm[a][p], cd[a][p], self.d_model[a][p], n, s0=0, k=k)
-        return dist
-
-    def getRpm(self, rpm, cr, p, s0, k=0) ->  dict[str, list[int]]:
-        n = self.real_horizon
-        logging.debug(f"Calcul Fuzzy dist for reception, product {p}")
-        dist = utils.getFuzzyDist(rpm[p], cr[p], self.r_model[p], n, s0=s0, k=k)
-        utils.validateFuzzyCDist(dist)
-        return dist
     
     @staticmethod
     def l4n(a: int, b: int, c: int, d: int, x: int) -> float:
@@ -122,12 +110,7 @@ class RiskManager(Shared):
 
     @staticmethod
     def getL4Necessity(rpm: dict[str, list[int]], dpm: dict[str, list[int]], x: list) -> list[float]:
-        try:
-            l4_necessity = [RiskManager.l4n(a, b, c, d, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
-        except:
-            print("\n")
-            utils.showModel(rpm)
-            raise
+        l4_necessity = [RiskManager.l4n(a, b, c, d, xt) for a, b, c, d, xt in zip(dpm["a"], dpm["b"], rpm["c"], rpm["d"], x)]
         return l4_necessity
     
     def getRobustness(self, l4p: list[float]) -> float:

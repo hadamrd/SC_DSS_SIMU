@@ -36,16 +36,7 @@ class SalesManager(Shared):
         pv_hist = [self.getEmptyAffQ() for _ in range(nbr_weeks)] 
         for a, p in self.itParams():
             print(".", end="", flush=True)
-            hist = utils.genRandQHist(nbr_weeks, self.ucm[a][p], self.getAffPvRange(a))
+            hist = utils.genRandQHist(nbr_weeks, self.ucm[a][p], self.getAffPvRange(a), fh=self.fixed_horizon)
             for w in range(nbr_weeks):
                 pv_hist[w][a][p] = hist[w]
         return pv_hist
-    
-
-
-
-        
-
-    
-
-     

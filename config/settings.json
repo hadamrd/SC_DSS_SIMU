@@ -75,7 +75,7 @@
     "sales_UCMF"    : "uncertainty_models/UMCPVF_I2.xlsx",
     "indicators_template_f": "templates/template_risk_indicators.xlsx",
     "platform_template_f": "templates/template_platform_input.xlsx",
-    "logging_level": "INFO",
+    "logging_level": "DEBUG",
     "log_f": "simu_debug.log",
     "prod_time": 2
 }

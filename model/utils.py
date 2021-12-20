@@ -55,7 +55,6 @@ def replicateFile(src, dst):
     with open(dst, "w") as fp:
         json.dump(src_d, fp)
 
-
 def getModelStr(model):
     res = "Model:\n"
     size = len(model['a'])
@@ -102,7 +101,7 @@ def validateFuzzyCDist(fcdist):
             if fcdist[params[i]][t] > fcdist[params[i+1]][t]:
                 raise Exception(f"Dist param '{params[i+1]}' can't be smaller than '{params[i]}'!")
 
-def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0):
+def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0, fh=0):
     logging.debug("calcul fuzzy dist with:")
     log_msg = getModelStr(model)
     format_row = "{:>7}" + "{:>7}" * n
@@ -122,14 +121,16 @@ def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0):
     logging.debug(log_msg)
     for param in params:
         logging.debug("calculs fd for param: " + param)
+        alpha = model[param]
         for t in range(n):
             t0 = model["RefWeek"][t] - 1
-            alpha_t = model[param][t]
             prev_param = dist[param][t0 - 1] if t0 > 0 else prev_dist[param][0]
-            dist[param][t] = math.floor(prev_param + (1 + alpha_t) * F[t] + s0)
-            logging.debug(f"t: {t}, t0: {t0}, F(t): {F[t]}, {param.lower()}(t): {alpha_t}, {param.upper()}(t0-1): {prev_param} ===> {param.upper()}(t) = {param.upper()}(t0-1) + (1 + {param.lower()}(t)) * F(t) = {dist[param][t]}")
+            dist[param][t] = math.floor(prev_param + (1 + alpha[t]) * F[t] + s0)
+            logging.debug(f"t: {t}, t0: {t0}, F(t): {F[t]}, {param.lower()}(t): {alpha[t]}, {param.upper()}(t0-1): {prev_param} ===> {param.upper()}(t) = {param.upper()}(t0-1) + (1 + {param.lower()}(t)) * F(t) = {dist[param][t]}")
             if t > 0 and model_type == "I2" and dist[param][t] < dist[param][t-1]:
                 raise Exception(f"While calculating cum dist for param {param}, got a non cumulated result!")
+            if t < fh and dist[param][t] != cq[k+t]:
+                raise Exception("Params must be equal to cq in fixed horizon")
     logging.debug(getModelStr(dist))
     validateFuzzyCDist(dist)
     return dist
@@ -157,14 +158,14 @@ def genRandCQFromUCM(prev_dist, ucm: dict, cq: list, w):
     validateCQ(cres)
     return cres
 
-def genRandCQHist(size, ucm, q0):
+def genRandCQHist(size, ucm, q0, fh=0):
     size_q = len(ucm["a"])
     hist = [None] * size
     cq_ref = list(accumu(randQ(size_q + size, q0)))
     cqpm = {param: [0 for _ in range(size_q)] for param in ["a", "b", "c", "d"]}
     for w in range(size):
         logging.debug(f"Calcul Randomized CQ for week: {w}")
-        cqpm = getFuzzyDist(cqpm, cq_ref, ucm, size_q, k=w)
+        cqpm = getFuzzyDist(cqpm, cq_ref, ucm, size_q, k=w, fh=fh)
         hist[w] = [0 for _ in range(size_q)]
         for t in range(size_q):
             rand_q = pickRand(cqpm["a"][t], cqpm["b"][t], cqpm["c"][t], cqpm["d"][t])
@@ -172,9 +173,9 @@ def genRandCQHist(size, ucm, q0):
         validateCQ(hist[w])
     return hist 
 
-def genRandQHist(size, ucm, q0):
+def genRandQHist(size, ucm, q0, fh=0):
     res = [None] * size
-    chist = genRandCQHist(size, ucm, q0)
+    chist = genRandCQHist(size, ucm, q0, fh)
     for w in range(size):
         res[w] = diff(chist[w])
         res[w][0] -= chist[w-1][0] if w > 0 else 0
