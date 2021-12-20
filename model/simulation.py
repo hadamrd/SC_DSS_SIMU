@@ -8,6 +8,8 @@ from . import Model, History
 from .filter import SmoothingFilter
 import copy
 import time
+import logging 
+
 
 class Simulation(Shared):
     count = 1
@@ -24,12 +26,14 @@ class Simulation(Shared):
         self.sales_folder    = None
 
     def getInitInput(self, ini_sales, r_model):
+        logging.info("Generating initial input ...")
         stock_ini = {a: {p: self.settings["affiliate"][a]["initial_stock"][p] for p in self.itAffProducts(a)} for a in self.itAffiliates()}
         stock_ini["cdc"] = {p: self.settings["cdc"]["initial_stock"][p] for p in self.products}
         r0 = sum([self.getAffPvRange(a) for a in self.itAffiliates()])
         crecep_ini = {}
         cqpm = {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]}
         for p in self.products:
+            logging.info(f"Generating initial reception(pdp) for product {p}")
             crecep_ini_ = utils.genRandCQ(self.horizon, r0)
             crecep_ini[p] = utils.genRandCQFromUCM(cqpm, r_model[p], crecep_ini_, 0)
             crecep_ini[p] += (self.horizon-self.real_horizon)*[crecep_ini[p][self.real_horizon-1]]
@@ -77,8 +81,6 @@ class Simulation(Shared):
                 print(format_row.format("prev x", *prev_cpsupplly[p][:n]))
                 print(format_row.format("demand ref", *cpdemande_ref[p][k:k+n]))
                 print("-" * nchars)
-                # print(format_row.format("capacity", *list(utils.accumu(capacity[p]))[:n]))
-                # print(format_row.format("bp", *self.model.cdc.bp[p][:n]))
                 print(format_row.format("reception", *creception[p][:n]))
                 print(format_row.format("reception ref", *creception_ref[p][k:k+n]))
                 print(format_row.format("dept", *product_dept[p][:n]))
@@ -204,22 +206,23 @@ class Simulation(Shared):
             os.mkdir(self.history_folder)
         if not os.path.exists(self.inputs_folder):
             os.mkdir(self.inputs_folder)
+
         st = time.perf_counter()
-        
-        print("Generating simu history ... ", end="")
+        print("Generating simu history ... ", end="", flush=True)
         self.generateHistory(
             start_week,
             end_week,
             ini_input,
             smoothing_filter=pa_filter
         )
-        print("Finished in :", time.perf_counter()-st)
+        print("Finished in :", time.perf_counter() - st)
 
-        print("Exporting history to excel files ... ", end="")
+        st = time.perf_counter()
+        print("Exporting history to excel files", end=" ", flush=True)
         self.sim_history.exportToExcel(
             prefix=Simulation.count,
             results_folder=self.results_folder
         )
-        print("Finished")
+        print(" Finished in :", time.perf_counter() - st)
 
         Simulation.count += 1

@@ -4,6 +4,8 @@ from . import Shared
 from . import utils
 import math
 import json 
+import logging 
+
 
 class RiskManager(Shared):
 
@@ -13,10 +15,10 @@ class RiskManager(Shared):
             self.loadDModel(self.demand_UCMF)
         elif self.demand_UCMF.endswith(".xlsx"):
             self.d_model = self.loadAffModelFromExcel(self.demand_UCMF, size=self.real_horizon)
-        if self.demand_UCMF.endswith(".json"):
+        if self.reception_UCMF.endswith(".json"):
             self.loadRModel(self.reception_UCMF)
-        elif self.demand_UCMF.endswith(".xlsx"):
-            self.r_model = self.loadProductModelFromExcel(self.demand_UCMF, size=self.real_horizon)
+        elif self.reception_UCMF.endswith(".xlsx"):
+            self.r_model = self.loadProductModelFromExcel(self.reception_UCMF, size=self.real_horizon)
 
     def getRiskMetrics(self, dpm, rpm, xc) -> dict[str, list[float]]:
         res = {
@@ -55,25 +57,17 @@ class RiskManager(Shared):
     def getDpm(self, dpm, cd, p, k=0) -> dict[str, dict[str, list[int]]]:
         n = self.real_horizon
         params = ["a", "b", "c", "d"]
-        dist = {a: utils.getFuzzyDist(dpm[p], cd[a][p], self.d_model[a][p], n, s0=0, k=k) for a in self.itProductAff(p)}
-        dist = {param: [sum([dist[a][param][t] for a in dist]) for t in range(n)] for param in params}       
-        for t in range(n):
-            if t > 0:
-                dist["a"][t] = max(dist["a"][t-1], dist["a"][t]) 
-                dist["b"][t] = max(dist["b"][t-1], dist["b"][t]) 
-            tr = n - 1 - t
-            if tr < n - 1:
-                dist["c"][tr] = min(dist["c"][tr], dist["c"][tr+1])
-                dist["d"][tr] = min(dist["d"][tr], dist["d"][tr+1])
-                # dist["a"][tr] = max(dist["a"][tr], dist["a"][tr+1])
-                # dist["b"][tr] = max(dist["b"][tr], dist["b"][tr+1])
-        for t in range(n):
-            if dist["d"][t] < dist["c"][t]:
-                raise Exception("d cant be smaller than c")
+        dist = {}
+        for a in self.itProductAff(p):
+            logging.info(f"Calcul Fuzzy dist for demand, affiliate {a} and product {p}")
+            dist[a] = utils.getFuzzyDist(dpm[p], cd[a][p], self.d_model[a][p], n, s0=0, k=k)
+        pdist = {param: [sum([dist[a][param][t] for a in dist]) for t in range(n)] for param in params}
+        utils.validateFuzzyCDist(pdist)
         return dist
 
     def getRpm(self, rpm, cr, p, s0, k=0) ->  dict[str, list[int]]:
         n = self.real_horizon
+        logging.info(f"Calcul Fuzzy dist for reception, product {p}")
         dist =  utils.getFuzzyDist(rpm[p], cr[p], self.r_model[p], n, s0=s0, k=k)
         return dist
     
