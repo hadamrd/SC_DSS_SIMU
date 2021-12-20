@@ -90,7 +90,7 @@ class Model(Shared):
             
     def runWeek(self, sales_forcast):
         self.sales_forcast = sales_forcast
-        self.aff_demand = self.getAffiliatesDemand(self.sales_forcast, self.prev_supply, self.week)
+        self.aff_demand = self.getAffiliatesDemand(self.prev_supply, self.sales_forcast, self.week)
         self.cdc_demand = self.getCDCDemand(self.aff_demand)
         self.cdc.initial_stock = self.getCDCInitialStock()
         self.cdc_prev_supply = self.getCDCPrevSupply()
