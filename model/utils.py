@@ -60,14 +60,14 @@ def getModelStr(model):
     res = "Model:\n"
     size = len(model['a'])
     format_row = "{:>7}" + "{:>7}" * size
-    res += format_row.format("week", *[f"W{t}" for t in range(size)]) + "\n"
+    res += format_row.format("week", *[f"W{t}" for t in range(size)])
     for k, v in model.items():
         if k not in ["RefWeek", "ModelType"]:
-            res += format_row.format(k, *[round(_, 2) for _ in v]) + "\n"
+            res += "\n" + format_row.format(k, *[round(_, 2) for _ in v])
         elif k == "RefWeek":
-            res += format_row.format("t0", *[_ - 1 for _ in v])
-        else:
-            res += format_row.format("MT", *v) + "\n"
+            res += "\n" + format_row.format("t0", *[_ - 1 for _ in v])
+        elif k == "ModelType":
+            res += "\n" + format_row.format("MT", *v)
     return res
     
 def randQ(size_q, q0):
@@ -103,33 +103,34 @@ def validateFuzzyCDist(fcdist):
                 raise Exception(f"Dist param '{params[i+1]}' can't be smaller than '{params[i]}'!")
 
 def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0):
-    logging.info("calcul fuzzy dist with:")
+    logging.debug("calcul fuzzy dist with:")
     log_msg = getModelStr(model)
     format_row = "{:>7}" + "{:>7}" * n
-    log_msg += "\n"+ format_row.format("CQ", *cq)
+    log_msg += "\n"+ format_row.format("CQ", *cq[k:k+n])
     params = ["a", "b", "c", "d"]
     dist = {param: [None] * n for param in params}
     F = [None] * n
+    model_type = model["ModelType"][0] 
     for t in range(n):
         t0 = model["RefWeek"][t] - 1
-        model_type = model["ModelType"][t] 
-        F[t] = cq[t + k] - cq[k + t0 - 1] if k + t0 > 0 else cq[t+k]            
+        F[t] = cq[t + k] - cq[k + t0 - 1] if k + t0 > 0 else cq[t + k]            
         if F[t] < 0:
             raise Exception("F_t can't be negative")
         if model_type == "I1":
-                F[t] /= t - t0 + 1
+            F[t] /= t - t0 + 1
     log_msg += "\n"+ format_row.format("F", *[round(_, 2) for _ in F])
     logging.debug(log_msg)
     for param in params:
-        logging.info("calculs fd for param: " + param)
+        logging.debug("calculs fd for param: " + param)
         for t in range(n):
             t0 = model["RefWeek"][t] - 1
             alpha_t = model[param][t]
             prev_param = dist[param][t0 - 1] if t0 > 0 else prev_dist[param][0]
-            dist[param][t] = round(prev_param + (1 + alpha_t) * F[t]  + s0)
-            logging.info(f"t: {t}, t0: {t0}, F(t): {F[t]}, alpha(t): {alpha_t}, {param.upper()}(t0-1): {prev_param} => {param.upper()} = {dist[param][t]}")
-            if t > 0 and dist[param][t] < dist[param][t-1]:
+            dist[param][t] = math.floor(prev_param + (1 + alpha_t) * F[t] + s0)
+            logging.debug(f"t: {t}, t0: {t0}, F(t): {F[t]}, {param.lower()}(t): {alpha_t}, {param.upper()}(t0-1): {prev_param} ===> {param.upper()}(t) = {param.upper()}(t0-1) + (1 + {param.lower()}(t)) * F(t) = {dist[param][t]}")
+            if t > 0 and model_type == "I2" and dist[param][t] < dist[param][t-1]:
                 raise Exception(f"While calculating cum dist for param {param}, got a non cumulated result!")
+    logging.debug(getModelStr(dist))
     validateFuzzyCDist(dist)
     return dist
 
@@ -162,7 +163,7 @@ def genRandCQHist(size, ucm, q0):
     cq_ref = list(accumu(randQ(size_q + size, q0)))
     cqpm = {param: [0 for _ in range(size_q)] for param in ["a", "b", "c", "d"]}
     for w in range(size):
-        logging.info(f"Calcul Randomized CQ for week: {w}")
+        logging.debug(f"Calcul Randomized CQ for week: {w}")
         cqpm = getFuzzyDist(cqpm, cq_ref, ucm, size_q, k=w)
         hist[w] = [0 for _ in range(size_q)]
         for t in range(size_q):
