@@ -38,17 +38,18 @@ class Simulation(Shared):
             crecep_ini[p] = utils.genRandCQFromUCM(cqpm, r_model[p], crecep_ini_, 0)
             crecep_ini[p] += (self.horizon-self.real_horizon)*[crecep_ini[p][self.real_horizon-1]]
             utils.validateCQ(crecep_ini[p])
+
         recep_ini = {p: utils.diff(crecep_ini[p]) for p in self.products}
         
-        cdc_prev_supply = {a: 
-            {p: ini_sales[a][p][int(aff["delivery_time"]):] + [0] * (self.horizon-int(aff["delivery_time"])) for p in self.itAffProducts(a)}     
+        prev_supply = {a: 
+            {p: [0] * int(aff["delivery_time"]) + ini_sales[a][p][int(aff["delivery_time"]):] for p in self.itAffProducts(a)}     
             for a, aff in self.settings["affiliate"].items()
         }
 
         input = {
             "prev_production": recep_ini,
             "crecep_ini": crecep_ini,
-            "prev_supply": cdc_prev_supply,
+            "prev_supply": prev_supply,
             "initial_stock": stock_ini,
             "week": 0,
         }
@@ -66,7 +67,6 @@ class Simulation(Shared):
         format_row = "{:>16}" + "{:>7}" * n
         original_stdout = sys.stdout # Save a reference to the original standard output
         product_dept = self.sumOverAffiliate(self.model.cdc_dept)
-        
         for p in self.products:
             log_f: str = os.path.join(self.history_folder, f"log_{p}.log")
             with open(log_f.format(p), 'a') as fp:
@@ -110,7 +110,7 @@ class Simulation(Shared):
         prev_cpsupplly = self.getEmptyProductQ(value=0)
 
         self.model.loadWeekInput(input_dict=ini_input)
-        aff_demand = self.model.getAffiliatesDemand(self.sales_history[0], ini_input["prev_supply"])
+        aff_demand = self.model.getAffiliatesDemand(self.sales_history[0], ini_input["prev_supply"], 0)
         demand_ini = self.model.getCDCDemand(aff_demand)
         ppv = self.sumOverAffiliate(self.sales_history[0])
         for p in self.products:
@@ -136,7 +136,7 @@ class Simulation(Shared):
             reception = self.model.cdc_reception
             demand = self.model.cdc_demand
             pdemand = self.model.cdc_product_demand
-            ppv = self.model.getProductSalesForcast()            
+            ppv = self.model.getCDCProductSalesForcast()            
             supply = self.model.cdc_supply
             product_supply = self.model.cdc_product_supply
             stock_ini = self.model.cdc.initial_stock

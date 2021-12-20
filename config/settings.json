@@ -1,7 +1,7 @@
 {
     "horizon": 24,
     "real_horizon": 20,
-    "fixed_horizon": 2,
+    "fixed_horizon": 0,
     "l4n_threshold": 0.5,
     "rand_pv_stat":  "minmax",
     "proba_pv_inf": 0.5,
@@ -63,7 +63,7 @@
     "factory_capacity": [17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 1700, 17000, 17000, 17000, 17000, 17000, 17000, 17000, 17000],
     "smoothing": {
         "range": {
-            "start": 2,
+            "start": 0,
             "end": 19
         },
         "optimisme": 1

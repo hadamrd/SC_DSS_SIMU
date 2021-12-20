@@ -24,7 +24,7 @@ def getDiffHist(cq_hist, p, q_size, fh):
     for t in range(q_size - 1, 2 * q_size - 1):
         for k in range(fh-1, q_size - 2):
             y = t - k
-            res[k - fh + 1][t - (q_size - 1)] = cq_hist[y][p][k] - cq_hist[y-1][p][k+1]
+            res[k - fh + 1][t - (q_size - 1)] = abs(cq_hist[y][p][k] - cq_hist[y-1][p][k+1])
     return res
 
 def getMeanVarDiffHist(cqdh):

@@ -27,8 +27,7 @@ class SalesManager(Shared):
         nbr_weeks = len(hist)
         if not os.path.exists(dst_folder):
             os.makedirs(dst_folder)
-        for w in range(nbr_weeks):
-            dst_file = os.path.join(dst_folder, f"sales_S{w}.json")
+        dst_file = os.path.join(dst_folder, f"sales.json")
         with open(dst_file, "w") as fp:
             json.dump(hist, fp)
             

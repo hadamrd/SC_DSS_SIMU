@@ -1,5 +1,6 @@
 import json
 import copy
+import logging
 import openpyxl
 from . import Shared, Affiliate, CDC, Factory, utils
 
@@ -16,8 +17,12 @@ class Model(Shared):
         self.factory = Factory()
         self.cdc = CDC()
 
-    def getProductSalesForcast(self):
-        return self.sumOverAffiliate(self.sales_forcast)
+    def getCDCProductSalesForcast(self):
+        cdc_sales = {a: 
+            {p: self.sales_forcast[a][p][int(aff["delivery_time"]):] + [0] * int(aff["delivery_time"]) for p in self.itAffProducts(a)}     
+            for a, aff in self.settings["affiliate"].items()
+        }
+        return self.sumOverAffiliate(cdc_sales)
     
     def loadSalesForcast(self, file_p):
         with open(file_p) as fp:
@@ -75,16 +80,17 @@ class Model(Shared):
             json.dump(data, fp)
         return data
 
-    def getAffiliatesDemand(self, prev_supply, sales_forcast):        
+    def getAffiliatesDemand(self, prev_supply, sales_forcast, w):        
         aff_d = {}
         for a, affiliate in self.affiliates.items():
             affiliate.initial_stock = self.initial_stock[a]
+            logging.debug(f"Calculation BA for {a}, week {w}")
             aff_d[a] = affiliate.getDemand(sales_forcast[a], prev_supply[a])
         return aff_d
             
     def runWeek(self, sales_forcast):
         self.sales_forcast = sales_forcast
-        self.aff_demand = self.getAffiliatesDemand(self.sales_forcast, self.prev_supply)
+        self.aff_demand = self.getAffiliatesDemand(self.sales_forcast, self.prev_supply, self.week)
         self.cdc_demand = self.getCDCDemand(self.aff_demand)
         self.cdc.initial_stock = self.getCDCInitialStock()
         self.cdc_prev_supply = self.getCDCPrevSupply()
