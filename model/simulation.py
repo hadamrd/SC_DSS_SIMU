@@ -106,7 +106,7 @@ class Simulation(Shared):
         cppv = self.getEmptyProductQ(value=0)
         creception = self.getEmptyProductQ(value=0)
         cpdemand = self.getEmptyProductQ(value=0)
-        creception_ref = self.getEmptyProductQ(value=0, size=h + nweeks)
+        creception_ref = self.getEmptyProductQ(value=0, size=rh + nweeks)
         cdemand_ref = self.getEmptyAffQ(value=0, size=rh + nweeks)
         cpsupply = self.getEmptyProductQ(value=0)
         prev_cpsupplly = self.getEmptyProductQ(value=0)
@@ -119,7 +119,7 @@ class Simulation(Shared):
         for p in self.products:
             for a in self.itProductAff(p):
                 cdemand_ref[a][p][:rh] = list(utils.accumu(demand_ini[a][p][:rh]))
-            creception_ref[p][:h] = ini_input["crecep_ini"][p]
+            creception_ref[p][:rh] = ini_input["crecep_ini"][p][:rh]
             
         rpm = {p: {param: [0 for _ in range(h)] for param in ["a", "b", "c", "d"]} for p in self.products}
         dpm = {a: {p: {param: [0 for _ in range(h)] for param in ["a", "b", "c", "d"]} for p in self.itAffProducts(a)} for a in self.itAffiliates()}
@@ -155,7 +155,7 @@ class Simulation(Shared):
             for p in self.products:
                 for a in self.itProductAff(p):
                     cdemand_ref[a][p][k + rh] = cdemand_ref[a][p][k + rh - 1] + demand[a][p][rh - 1]
-                creception_ref[p][k + h] = creception_ref[p][k + h - 1] + reception[p][h - 1]
+                creception_ref[p][k + rh] = creception_ref[p][k + rh - 1] + reception[p][rh - 1]
             
             # calculate distributions
             dpm, rpm = self.risk_manager.getDitributions(dpm, rpm, cdemand_ref, creception_ref, stock_ini, k)
