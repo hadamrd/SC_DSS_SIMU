@@ -47,7 +47,7 @@ class Model(Shared):
         for a, aff in self.affiliates.items():
             initial_stock[a] = {
                 p: aff.initial_stock[p] + self.prev_supply[a][p][0] +\
-                    (self.cdc.supply[a][p][0] if aff.delivery_time==0 else 0) - self.sales_forcast[a][p][0] 
+                    (self.cdc.supply[a][p][0] if aff.delivery_time == 0 else 0) - self.sales_forcast[a][p][0] 
                 for p in aff.products
             } 
         initial_stock["cdc"] = {p: self.cdc.projected_stock[p][0] for p in self.products}
@@ -55,12 +55,12 @@ class Model(Shared):
 
     def getNextSupply(self):
         next_supply = {}
+        n = self.horizon
         for a, aff in self.affiliates.items():
+            dt = aff.delivery_time
             next_supply[a] = {}
             for p in self.itAffProducts(a):
-                next_supply[a][p] = self.prev_supply[a][p][1:aff.delivery_time+1] +\
-                    self.cdc_supply[a][p][1:self.horizon-aff.delivery_time] +\
-                        [self.cdc_supply[a][p][self.horizon-aff.delivery_time-1]]
+                next_supply[a][p] = self.prev_supply[a][p][1:dt+1] + self.cdc_supply[a][p][1:n-dt] + [self.cdc_supply[a][p][n-dt-1]]
         return next_supply
 
     def getNextProdPlan(self):

@@ -108,9 +108,10 @@ class Simulation(Shared):
         cdemand_ref = self.getEmptyAffQ(value=0, size=self.horizon + nweeks)
         cpsupply = self.getEmptyProductQ(value=0)
         prev_cpsupplly = self.getEmptyProductQ(value=0)
+        cpsupply_out = self.getEmptyProductQ(0)
 
         self.model.loadWeekInput(input_dict=ini_input)
-        aff_demand = self.model.getAffiliatesDemand(self.sales_history[0], ini_input["prev_supply"], 0)
+        aff_demand = self.model.getAffiliatesDemand(ini_input["prev_supply"], self.sales_history[0], 0)
         demand_ini = self.model.getCDCDemand(aff_demand)
         ppv = self.sumOverAffiliate(self.sales_history[0])
         for p in self.products:
@@ -138,15 +139,14 @@ class Simulation(Shared):
             pdemand = self.model.cdc_product_demand
             ppv = self.model.getCDCProductSalesForcast()            
             supply = self.model.cdc_supply
-            product_supply = self.model.cdc_product_supply
+            psupply = self.model.cdc_product_supply
             stock_ini = self.model.cdc.initial_stock
             prev_supply = self.model.getCDCPrevSupply()
             prev_psupply = self.sumOverAffiliate(prev_supply)
             
             # get outputs cumulated plans
-            cpr = {p: cpsupply[p][0] for p in self.products }
-            prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], cpr[p])) for p in self.products}
-            cpsupply = {p: list(utils.accumu(product_supply[p], cpr[p])) for p in self.products}
+            prev_cpsupplly = {p: list(utils.accumu(prev_psupply[p], prev_cpsupplly[p][0])) for p in self.products}
+            cpsupply = {p: list(utils.accumu(psupply[p], cpr[p])) for p in self.products}
             cpdemand = {p: list(utils.accumu(pdemand[p], cpdemand[p][0])) for p in self.products}
             creception = {p: list(utils.accumu(reception[p], creception[p][0])) for p in self.products}
             cppv = {p: list(utils.accumu(ppv[p], cppv[p][0])) for p in self.products}
@@ -169,14 +169,25 @@ class Simulation(Shared):
             # gather metrics
             snapshot["metrics"]["in"] = self.risk_manager.getRiskMetrics(pdpm, rpm, cpsupply)
             n = self.real_horizon
-            cpsupply_out = self.getEmptyProductQ(0)
             
             # In case there is a filter apply it
             if smoothing_filter:
-                cpsupply_out = {p: smoothing_filter.smooth(rpm[p], pdpm[p], cpsupply[p][:n]) for p in self.products}
-                psupply_out = {p: utils.diff(cpsupply_out[p], cpr[p]) + product_supply[p][n:] for p in self.products}
-                cpsupply_out = {p: cpsupply_out[p] + list(utils.accumu(product_supply[p][n:], cpsupply_out[p][n-1])) for p in self.products}
+                cpsupply_out = {p: smoothing_filter.smooth(rpm[p], pdpm[p], cpsupply[p][:n], cpr[p]) for p in self.products}
+                psupply_out = {p: utils.diff(cpsupply_out[p], cpr[p]) + psupply[p][n:] for p in self.products}
+                for p in self.products:
+                    if psupply_out[p][0] < 0:
+                        raise Exception("Got negative supply after decum")
+                cpsupply_out = {p: cpsupply_out[p] + list(utils.accumu(psupply[p][n:], cpsupply_out[p][n-1])) for p in self.products}
+                cpr = {p: cpsupply_out[p][0] for p in self.products}
                 supply_out = self.dispatch(psupply_out, demand, supply)
+                
+                # if k == 1:
+                #     print(cpr["P1"])
+                #     print(cpsupply_out["P1"][0])
+                #     print(cpr["P1"] + sum([supply_out[a]["P1"][0] for a in self.itProductAff("P1")]))
+                # if k == 2:
+                #     print(cpr["P1"], cpsupply_out["P1"][0],  psupply_out["P1"][0])
+                #     raise 
                 self.model.setCDCSupply(supply_out, psupply_out)
                 snapshot["cproduct_supply"] = cpsupply_out
                 snapshot["product_supply"] = psupply_out

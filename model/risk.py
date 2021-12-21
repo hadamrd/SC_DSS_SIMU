@@ -45,6 +45,7 @@ class RiskManager(Shared):
             s0 = initial_stock[p]
             rpm[p] = utils.getFuzzyDist(prev_rpm[p], creception_ref[p], self.r_model[p], n, s0=s0, k=k)
             for a in self.itProductAff(p):
+                logging.info(f"Demand dist calculus at week {k} for aff {a}, product {p}")
                 dpm[a][p] = utils.getFuzzyDist(prev_dpm[a][p], cdemand_ref[a][p], self.d_model[a][p], n, s0=0, k=k)
         return dpm, rpm
 

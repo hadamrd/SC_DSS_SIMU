@@ -17,7 +17,7 @@ class SmoothingFilter(Shared):
                 print(x_out)
                 raise Exception(f"x_out[{t}] = {x_out[t]} < x_out[{t-1}] = {x_out[t-1]}!")
     
-    def smooth(self, rpm: dict[str, list[int]], dpm: dict[str, list[int]], x_in: list[int]):
+    def smooth(self, rpm: dict[str, list[int]], dpm: dict[str, list[int]], x_in: list[int], cpr: int=0):
         x = x_in.copy()
         start = self.range["start"]
         end = self.range["end"]
@@ -34,7 +34,9 @@ class SmoothingFilter(Shared):
             x[t] = tgt
             
         for t in range(start, self.real_horizon-1):
-            if t > 0:
+            if t == 0:
+                x[t] = max(cpr, x[t])
+            else:
                 x[t] = max(x[t-1], x[t])
                 
         for t in range(self.real_horizon-2, start-1, -1):
