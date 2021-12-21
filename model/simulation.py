@@ -97,6 +97,8 @@ class Simulation(Shared):
         sys.stdout = original_stdout
 
     def generateHistory(self, start_week: int, end_week: int, ini_input, smoothing_filter: SmoothingFilter=None):
+        rh = self.real_horizon
+        h = self.horizon
         nweeks = end_week - start_week + 1
         self.flushLogs()
 
@@ -104,8 +106,8 @@ class Simulation(Shared):
         cppv = self.getEmptyProductQ(value=0)
         creception = self.getEmptyProductQ(value=0)
         cpdemand = self.getEmptyProductQ(value=0)
-        creception_ref = self.getEmptyProductQ(value=0, size=self.horizon + nweeks)
-        cdemand_ref = self.getEmptyAffQ(value=0, size=self.horizon + nweeks)
+        creception_ref = self.getEmptyProductQ(value=0, size=h + nweeks)
+        cdemand_ref = self.getEmptyAffQ(value=0, size=rh + nweeks)
         cpsupply = self.getEmptyProductQ(value=0)
         prev_cpsupplly = self.getEmptyProductQ(value=0)
         cpsupply_out = self.getEmptyProductQ(0)
@@ -116,11 +118,11 @@ class Simulation(Shared):
         ppv = self.sumOverAffiliate(self.sales_history[0])
         for p in self.products:
             for a in self.itProductAff(p):
-                cdemand_ref[a][p][:self.horizon] = list(utils.accumu(demand_ini[a][p]))
-            creception_ref[p][:self.horizon] = ini_input["crecep_ini"][p]
+                cdemand_ref[a][p][:rh] = list(utils.accumu(demand_ini[a][p][:rh]))
+            creception_ref[p][:h] = ini_input["crecep_ini"][p]
             
-        rpm = {p: {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]} for p in self.products}
-        dpm = {a: {p: {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]} for p in self.itAffProducts(a)} for a in self.itAffiliates()}
+        rpm = {p: {param: [0 for _ in range(h)] for param in ["a", "b", "c", "d"]} for p in self.products}
+        dpm = {a: {p: {param: [0 for _ in range(h)] for param in ["a", "b", "c", "d"]} for p in self.itAffProducts(a)} for a in self.itAffiliates()}
         cpr = {p: 0 for p in self.products}
         
         # start main loop
@@ -152,8 +154,8 @@ class Simulation(Shared):
             cppv = {p: list(utils.accumu(ppv[p], cppv[p][0])) for p in self.products}
             for p in self.products:
                 for a in self.itProductAff(p):
-                    cdemand_ref[a][p][k+self.horizon] = cdemand_ref[a][p][k+self.horizon-1] + demand[a][p][self.horizon-1] 
-                creception_ref[p][k+self.horizon] = creception_ref[p][k+self.horizon-1] + reception[p][self.horizon-1]
+                    cdemand_ref[a][p][k + rh] = cdemand_ref[a][p][k + rh - 1] + demand[a][p][rh - 1]
+                creception_ref[p][k + h] = creception_ref[p][k + h - 1] + reception[p][h - 1]
             
             # calculate distributions
             dpm, rpm = self.risk_manager.getDitributions(dpm, rpm, cdemand_ref, creception_ref, stock_ini, k)
@@ -172,29 +174,22 @@ class Simulation(Shared):
             
             # In case there is a filter apply it
             if smoothing_filter:
-                cpsupply_out = {p: smoothing_filter.smooth(rpm[p], pdpm[p], cpsupply[p][:n], cpr[p]) for p in self.products}
-                psupply_out = {p: utils.diff(cpsupply_out[p], cpr[p]) + psupply[p][n:] for p in self.products}
+                cpsupply_out = {p: smoothing_filter.smooth(rpm[p], pdpm[p], cpsupply[p][:rh], cpr[p]) for p in self.products}
+                psupply_out = {p: utils.diff(cpsupply_out[p], cpr[p]) + psupply[p][rh:] for p in self.products}
                 for p in self.products:
                     if psupply_out[p][0] < 0:
                         raise Exception("Got negative supply after decum")
-                cpsupply_out = {p: cpsupply_out[p] + list(utils.accumu(psupply[p][n:], cpsupply_out[p][n-1])) for p in self.products}
+                cpsupply_out = {p: cpsupply_out[p] + list(utils.accumu(psupply[p][rh:], cpsupply_out[p][rh-1])) for p in self.products}
                 cpr = {p: cpsupply_out[p][0] for p in self.products}
                 supply_out = self.dispatch(psupply_out, demand, supply)
                 
-                # if k == 1:
-                #     print(cpr["P1"])
-                #     print(cpsupply_out["P1"][0])
-                #     print(cpr["P1"] + sum([supply_out[a]["P1"][0] for a in self.itProductAff("P1")]))
-                # if k == 2:
-                #     print(cpr["P1"], cpsupply_out["P1"][0],  psupply_out["P1"][0])
-                #     raise 
                 self.model.setCDCSupply(supply_out, psupply_out)
                 snapshot["cproduct_supply"] = cpsupply_out
                 snapshot["product_supply"] = psupply_out
                 snapshot["supply"] = supply_out
                 snapshot["metrics"]["out"] = self.risk_manager.getRiskMetrics(pdpm, rpm, cpsupply_out)
-                
-            cpdemande_ref = self.sumOverAffiliate(cdemand_ref, horizon=self.horizon + nweeks)
+            
+            cpdemande_ref = self.sumOverAffiliate(cdemand_ref, horizon=rh + nweeks)
                 
             # log simulation state 
             self.log_state(k, pdpm, rpm, cppv, cpsupply, cpsupply_out, cpdemand, creception, cpdemande_ref, creception_ref, prev_cpsupplly)
