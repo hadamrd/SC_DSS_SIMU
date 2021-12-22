@@ -171,18 +171,18 @@ def genRandCQHist(size, ucm, q0, fh=0):
             rand_q = pickRand(cqpm["a"][t], cqpm["b"][t], cqpm["c"][t], cqpm["d"][t])
             hist[w][t] = max(rand_q, hist[w][t-1] if t > 0 else 0)
         validateCQ(hist[w])
-    return hist 
+    return hist, cq_ref
 
 def genRandQHist(size, ucm, q0, fh=0):
     res = [None] * size
-    chist = genRandCQHist(size, ucm, q0, fh)
+    chist, cq_ref = genRandCQHist(size, ucm, q0, fh)
     for w in range(size):
         res[w] = diff(chist[w])
         res[w][0] -= chist[w-1][0] if w > 0 else 0
         if res[w][0] < 0:
             print(res[w][0], chist[w-1][0])
             raise Exception("PV can't be negative!")
-    return res
+    return res, cq_ref
     
 def validateCQ(cq):
     n = len(cq)

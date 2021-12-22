@@ -15,7 +15,7 @@ class CDC(Shared):
         self.supply = self.getEmptyAffQ(None)
         self.prod_demand = self.getEmptyProductQ(None)
         self.reception = self.getEmptyProductQ(None)
-    
+
     def getProdDemand(self, prev_production, product_demand):
         self.bp = self.getEmptyProductQ(0)
         for p in self.products:

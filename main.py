@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Generate all sales history beforhand
     st = time.perf_counter()
     print("Generating sales history ", end="", flush=True)
-    sales_hist = sales_manager.generateSalesHistory(nbr_weeks)
+    sales_hist, csales_ref = sales_manager.generateSalesHistory(nbr_weeks)
     print("Finished in ", round(time.perf_counter() - st, 2))
     sales_manager.saveSalesHistory(sales_hist, sales_folder) 
 
@@ -32,6 +32,7 @@ if __name__ == "__main__":
     simu1 = Simulation("simu1")
     ini_input = simu1.getInitInput(sales_hist[0], simu1.risk_manager.r_model)
     simu1.run(
+        csales_ref=csales_ref,
         sales_history=sales_hist,
         start_week=start_week, 
         ini_input=ini_input,
@@ -43,6 +44,7 @@ if __name__ == "__main__":
     print("> Working on without smoothing filter case: ")
     simu2 = Simulation("simu2")
     simu2.run(
+        csales_ref=csales_ref,
         sales_history=sales_hist,
         start_week=start_week, 
         end_week=end_week, 
