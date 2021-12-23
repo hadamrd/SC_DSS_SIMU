@@ -4,7 +4,7 @@
     "fixed_horizon": 0,
     "l4n_threshold": 0.5,
     "rand_pv_stat":  "minmax",
-    "proba_pv_inf": 0.5,
+    "proba_pv_inf": 1,
     "affiliate": {
         "france": {
             "code": "001",
@@ -22,7 +22,7 @@
             "code": "002",
             "pv_range": 200,
             "target_stock": 0,
-            "delivery_time": 1,
+            "delivery_time": 0,
             "products": ["P1", "P2"],
             "initial_stock": {
                 "P1": 0,
@@ -33,7 +33,7 @@
             "code": "003",
             "pv_range": 200,
             "target_stock": 0,
-            "delivery_time": 2,
+            "delivery_time": 0,
             "products": ["P1", "P3"],
             "initial_stock": {
                 "P1": 0,
@@ -44,7 +44,7 @@
             "code": "004",
             "pv_range": 200,
             "target_stock": 0,
-            "delivery_time": 3,
+            "delivery_time": 0,
             "products": ["P4"],
             "initial_stock": {
                 "P4": 0

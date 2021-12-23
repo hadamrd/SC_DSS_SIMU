@@ -137,6 +137,8 @@ def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0, fh=0):
     return dist
 
 def pickRand(a, b, c, d):
+    with open("config/settings.json") as fp:
+        settings = json.load(fp)
     alpha = random.random()
     x1 = round(a + alpha * (b - a))
     x2 = round(d - alpha * (d - c))
@@ -144,7 +146,7 @@ def pickRand(a, b, c, d):
         return x2
     if c == d == 0:
         return x1
-    return x1 if random.random() < 0.5 else x2
+    return x1 if random.random() < settings["proba_pv_inf"] else x2
 
 def genRandCQ(size, q0):
     return list(accumu(randQ(size, q0)))
