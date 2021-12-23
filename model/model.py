@@ -17,13 +17,24 @@ class Model(Shared):
         self.factory = Factory()
         self.cdc = CDC()
 
-    def getCDCProductSalesForcast(self):
+    def getCDCProductSalesForcast(self, pv=None):
+        if not pv:
+            pv = self.sales_forcast
         cdc_sales = {a: 
-            {p: self.sales_forcast[a][p][int(aff["delivery_time"]):] + [0] * int(aff["delivery_time"]) for p in self.itAffProducts(a)}     
+            {p: pv[a][p][int(aff["delivery_time"]):] + [0] * int(aff["delivery_time"]) for p in self.itAffProducts(a)}     
             for a, aff in self.settings["affiliate"].items()
         }
         return self.sumOverAffiliate(cdc_sales)
     
+    def getCDCSalesForcast(self, pv=None):
+        if not pv:
+            pv = self.sales_forcast
+        cdc_sales = {a: 
+            {p: pv[a][p][int(aff["delivery_time"]):] + [0] * int(aff["delivery_time"]) for p in self.itAffProducts(a)}     
+            for a, aff in self.settings["affiliate"].items()
+        }
+        return cdc_sales
+
     def loadSalesForcast(self, file_p):
         with open(file_p) as fp:
             self.sales_forcast = json.load(fp)

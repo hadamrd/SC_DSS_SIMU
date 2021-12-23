@@ -17,9 +17,10 @@ class Affiliate(Shared):
             stock_proj = self.initial_stock[p]
             for t in range(self.horizon):
                 imminent_supply = prev_supply[p][t] if t < self.delivery_time else 0
-                self.demand[p][t] = max(0, sales_forcast[p][t] + self.target_stock[p][t] - imminent_supply - stock_proj)
-                logging.debug(f"t: {t}, p: {p}, sales: {sales_forcast[p][t]}, imminent: {imminent_supply}, stock_proj: {stock_proj} ==> BA = {self.demand[p][t]}")
-                stock_proj = stock_proj + imminent_supply + self.demand[p][t] - sales_forcast[p][t]
-                if stock_proj < 0:
-                    raise Exception("can't have negative stock")
+                # self.demand[p][t] = max(0, sales_forcast[p][t] + self.target_stock[p][t] - imminent_supply - stock_proj)
+                self.demand[p][t] = sales_forcast[p][t]
+                # logging.debug(f"t: {t}, p: {p}, sales: {sales_forcast[p][t]}, imminent: {imminent_supply}, stock_proj: {stock_proj} ==> BA = {self.demand[p][t]}")
+                # stock_proj = stock_proj + imminent_supply + self.demand[p][t] - sales_forcast[p][t]
+                # if stock_proj < 0:
+                #     raise Exception("can't have negative stock")
         return self.demand

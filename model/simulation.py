@@ -93,7 +93,7 @@ class Simulation(Shared):
                 print(format_row.format("NL4 out", *[round(_, 2) for _ in self.risk_manager.getL4Necessity(rpm[p], dpm[p], cproduct_supply_out[p][:n])]))
         sys.stdout = original_stdout
 
-    def generateHistory(self, start_week: int, end_week: int, ini_input, csales_ref, smoothing_filter: SmoothingFilter=None):
+    def generateHistory(self, start_week: int, end_week: int, ini_input, sales_ref, smoothing_filter: SmoothingFilter=None):
         nweeks = end_week - start_week + 1
         self.flushLogs()
 
@@ -102,12 +102,16 @@ class Simulation(Shared):
         creception = self.getEmptyProductQ(value=0)
         cpdemand = self.getEmptyProductQ(value=0)
         creception_ref = self.getEmptyProductQ(value=0, size=self.horizon + nweeks)
-        cdemand_ref = csales_ref
+        demand_ref = self.model.getCDCSalesForcast(sales_ref)
+        cdemand_ref = {
+            a: {
+                p: list(utils.accumu(demand_ref[a][p])) for p in self.itAffProducts(a)
+            } for a in self.itAffiliates()
+        }
         cpsupply = self.getEmptyProductQ(value=0)
         prev_cpsupplly = self.getEmptyProductQ(value=0)
         self.model.loadWeekInput(input_dict=ini_input)
-        
-        ppv = self.sumOverAffiliate(self.sales_history[0])
+
         for p in self.products:
             creception_ref[p][:self.horizon] = ini_input["crecep_ini"][p]
         rpm = {p: {param: [0 for _ in range(self.real_horizon)] for param in ["a", "b", "c", "d"]} for p in self.products}
@@ -186,7 +190,7 @@ class Simulation(Shared):
             # generate next week inputs
             ini_input = self.model.generateNextWeekInput(next_input_f)
 
-    def run(self, csales_ref, sales_history, start_week, end_week, ini_input, pa_filter=None):
+    def run(self, sales_ref, sales_history, start_week, end_week, ini_input, pa_filter=None):
         self.history_folder  = f"{self.name}/history"
         self.inputs_folder   = f"{self.name}/inputs"
         self.results_folder  = f"{self.name}/results"
@@ -206,7 +210,7 @@ class Simulation(Shared):
             start_week,
             end_week,
             ini_input,
-            csales_ref,
+            sales_ref,
             smoothing_filter=pa_filter
         )
         print("Finished in :", time.perf_counter() - st)

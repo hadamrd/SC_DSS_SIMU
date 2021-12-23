@@ -1,7 +1,7 @@
 {
     "horizon": 24,
     "real_horizon": 20,
-    "fixed_horizon": 2,
+    "fixed_horizon": 0,
     "l4n_threshold": 0.5,
     "rand_pv_stat":  "minmax",
     "proba_pv_inf": 0.5,
@@ -9,7 +9,7 @@
         "france": {
             "code": "001",
             "pv_range": 200,
-            "target_stock": 100,
+            "target_stock": 0,
             "delivery_time": 0,
             "products": ["P1", "P2", "P3"],
             "initial_stock": {
@@ -21,7 +21,7 @@
         "spain": {
             "code": "002",
             "pv_range": 200,
-            "target_stock": 100,
+            "target_stock": 0,
             "delivery_time": 1,
             "products": ["P1", "P2"],
             "initial_stock": {
@@ -32,7 +32,7 @@
         "chili": {
             "code": "003",
             "pv_range": 200,
-            "target_stock": 100,
+            "target_stock": 0,
             "delivery_time": 2,
             "products": ["P1", "P3"],
             "initial_stock": {
@@ -43,7 +43,7 @@
         "australia": {
             "code": "004",
             "pv_range": 200,
-            "target_stock": 100,
+            "target_stock": 0,
             "delivery_time": 3,
             "products": ["P4"],
             "initial_stock": {
@@ -63,7 +63,7 @@
     "factory_capacity": [1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700, 1700],
     "smoothing": {
         "range": {
-            "start": 2,
+            "start": 0,
             "end": 19
         },
         "optimisme": 1

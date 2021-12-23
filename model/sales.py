@@ -33,11 +33,11 @@ class SalesManager(Shared):
             
     def generateSalesHistory(self, nbr_weeks):
         pv_hist = [self.getEmptyAffQ() for _ in range(nbr_weeks)]
-        cpv_ref = self.getEmptyAffQ()
+        pv_ref = self.getEmptyAffQ()
         for a, p in self.itParams():
             print(".", end="", flush=True)
-            hist, ap_cpv_ref = utils.genRandQHist(nbr_weeks, self.ucm[a][p], self.getAffPvRange(a), fh=self.fixed_horizon)
-            cpv_ref[a][p] = ap_cpv_ref
+            hist, ap_pv_ref = utils.genRandQHist(nbr_weeks, self.ucm[a][p], self.getAffPvRange(a), fh=self.fixed_horizon)
+            pv_ref[a][p] = ap_pv_ref
             for w in range(nbr_weeks):
                 pv_hist[w][a][p] = hist[w]
-        return pv_hist, cpv_ref
+        return pv_hist, pv_ref

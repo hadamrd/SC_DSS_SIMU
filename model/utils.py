@@ -128,6 +128,7 @@ def getFuzzyDist(prev_dist, cq, model, n, s0=0, k=0, fh=0):
             dist[param][t] = math.floor(prev_param + (1 + alpha[t]) * F[t] + s0)
             logging.debug(f"t: {t}, t0: {t0}, F(t): {F[t]}, {param.lower()}(t): {alpha[t]}, {param.upper()}(t0-1): {prev_param} ===> {param.upper()}(t) = {param.upper()}(t0-1) + (1 + {param.lower()}(t)) * F(t) = {dist[param][t]}")
             if t > 0 and model_type == "I2" and dist[param][t] < dist[param][t-1]:
+                print(dist[param][t], dist[param][t-1])
                 raise Exception(f"While calculating cum dist for param {param}, got a non cumulated result!")
             if t < fh and dist[param][t] != cq[k+t]:
                 raise Exception("Params must be equal to cq in fixed horizon")
@@ -161,7 +162,8 @@ def genRandCQFromUCM(prev_dist, ucm: dict, cq: list, w):
 def genRandCQHist(size, ucm, q0, fh=0):
     size_q = len(ucm["a"])
     hist = [None] * size
-    cq_ref = list(accumu(randQ(size_q + size, q0)))
+    q_ref = list(randQ(size_q + size, q0))
+    cq_ref = list(accumu(q_ref))
     cqpm = {param: [0 for _ in range(size_q)] for param in ["a", "b", "c", "d"]}
     for w in range(size):
         logging.debug(f"Calcul Randomized CQ for week: {w}")
@@ -171,18 +173,18 @@ def genRandCQHist(size, ucm, q0, fh=0):
             rand_q = pickRand(cqpm["a"][t], cqpm["b"][t], cqpm["c"][t], cqpm["d"][t])
             hist[w][t] = max(rand_q, hist[w][t-1] if t > 0 else 0)
         validateCQ(hist[w])
-    return hist, cq_ref
+    return hist, q_ref
 
 def genRandQHist(size, ucm, q0, fh=0):
     res = [None] * size
-    chist, cq_ref = genRandCQHist(size, ucm, q0, fh)
+    chist, q_ref = genRandCQHist(size, ucm, q0, fh)
     for w in range(size):
         res[w] = diff(chist[w])
         res[w][0] -= chist[w-1][0] if w > 0 else 0
         if res[w][0] < 0:
             print(res[w][0], chist[w-1][0])
             raise Exception("PV can't be negative!")
-    return res, cq_ref
+    return res, q_ref
     
 def validateCQ(cq):
     n = len(cq)
